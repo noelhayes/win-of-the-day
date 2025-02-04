@@ -1,105 +1,87 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import NewPostForm from '../../components/NewPostForm';
-import Post from '../../components/Post';
-import { useSupabase } from '../../lib/supabaseClient';
+import WinFeed from '../../components/WinFeed';
+import { createClient } from '../../utils/supabase/client';
 
 export default function FeedPage() {
-  const [posts, setPosts] = useState([]);
+  const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const supabase = useSupabase();
-
-  async function fetchPosts() {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          user:users(
-            id,
-            name,
-            profileImage,
-            username
-          ),
-          likes(id)
-        `)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setPosts(data || []);
-    } catch (err) {
-      console.error('Error fetching posts:', err);
-      setError('Failed to load posts. Please try again later.');
-    } finally {
-      setLoading(false);
-    }
-  }
+  const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
-    fetchPosts();
+    async function loadUser() {
+      try {
+        // Get user data
+        const { data: { user: userData }, error: userError } = await supabase.auth.getUser();
+        if (!userData || userError) {
+          router.push('/');
+          return;
+        }
 
-    // Set up real-time subscription for new posts
-    const channel = supabase
-      .channel('public:posts')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'posts'
-      }, () => {
-        fetchPosts();
-      })
-      .subscribe();
+        // Get user profile data
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', userData.id)
+          .single();
+
+        const name = profile?.name || userData.email?.split('@')[0] || 'there';
+        setUser({ ...userData, displayName: name });
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadUser();
+
+    // Listen to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        router.push('/');
+      }
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      subscription?.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto py-8 px-4 sm:px-6 lg:max-w-3xl lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Feed</h1>
-          <p className="text-gray-600">Share and celebrate your daily wins!</p>
-        </div>
+  // Redirect if no user
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/');
+    }
+  }, [loading, user, router]);
 
-        {/* New Post Form */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-8">
-          <NewPostForm onPostCreated={fetchPosts} />
-        </div>
-
-        {/* Posts Feed */}
-        <div className="space-y-6">
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-blue-500"></div>
-              <p className="mt-2 text-gray-600">Loading posts...</p>
-            </div>
-          ) : error ? (
-            <div className="bg-red-50 p-4 rounded-lg">
-              <p className="text-red-600">{error}</p>
-              <button
-                onClick={fetchPosts}
-                className="mt-2 text-red-600 hover:text-red-500 font-medium"
-              >
-                Try Again
-              </button>
-            </div>
-          ) : posts.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-600">No posts yet. Be the first to share your win!</p>
-            </div>
-          ) : (
-            posts.map((post) => (
-              <Post key={post.id} post={post} refreshPosts={fetchPosts} />
-            ))
-          )}
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-32">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
         </div>
       </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold text-gray-900 mb-8">
+        Welcome to your feed, {user.displayName}!
+      </h1>
+      
+      <div className="mb-8">
+        <NewPostForm />
+      </div>
+
+      <WinFeed currentUser={user} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 import { useRouter } from 'next/navigation';
 
 export default function SignInForm() {
@@ -13,7 +13,10 @@ export default function SignInForm() {
   const [loading, setLoading] = useState(false);
   
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -22,43 +25,48 @@ export default function SignInForm() {
 
     try {
       if (isSignUp) {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              name: name || email.split('@')[0],
-            },
+        console.log('Starting signup process...');
+        // Server-side signup will be handled by the API route
+        const response = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            email,
+            password,
+            name: name || email.split('@')[0],
+          }),
         });
 
-        if (signUpError) throw signUpError;
+        const data = await response.json();
+        console.log('Signup response:', data);
+        
+        if (!response.ok) throw new Error(data.error);
 
-        if (data?.user) {
-          const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([
-              {
-                id: data.user.id,
-                name: name || email.split('@')[0],
-                email,
-                created_at: new Date().toISOString(),
-              },
-            ]);
-
-          if (profileError) throw profileError;
-        }
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
+        // After successful signup, sign in the user
+        console.log('Signup successful, attempting sign in...');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
+        console.log('Sign in result:', { data: signInData, error: signInError });
+        if (signInError) throw signInError;
+      } else {
+        console.log('Starting sign in process...');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        console.log('Sign in result:', { data: signInData, error: signInError });
         if (signInError) throw signInError;
       }
 
       router.refresh();
     } catch (err) {
+      console.error('Authentication error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -67,15 +75,22 @@ export default function SignInForm() {
 
   const handleGoogleSignIn = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log('Starting Google sign in...');
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
         },
       });
 
+      console.log('Google sign in result:', { data, error });
       if (error) throw error;
     } catch (err) {
+      console.error('Google sign in error:', err);
       setError(err.message);
     }
   };

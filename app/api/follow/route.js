@@ -1,32 +1,52 @@
-// app/api/posts/route.js
+// app/api/follow/route.js
+import { createClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 
 export async function POST(request) {
-  // Create a Supabase client that reads cookies from the request
-  const supabase = createRouteHandlerClient({ cookies: request.cookies });
-  
-  // Get the current session from the request's cookies
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session?.user) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  
-  const body = await request.json();
-  const { content } = body;
-  if (!content) {
-    return NextResponse.json({ error: 'Content is required' }, { status: 400 });
-  }
-  
-  // Insert using the correct field name (user_id) as per your table schema
-  const { data, error } = await supabase
-    .from('posts')
-    .insert([{ user_id: session.user.id, content }])
-    .single();
-  
-  if (error) {
+
+  try {
+    const { targetUserId } = await request.json();
+
+    const { error } = await supabase
+      .from('follows')
+      .insert([
+        { follower_id: user.id, following_id: targetUserId }
+      ]);
+
+    if (error) throw error;
+
+    return NextResponse.json({ message: 'Successfully followed user' });
+  } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
-  
-  return NextResponse.json(data, { status: 201 });
+}
+
+export async function DELETE(request) {
+  const supabase = await createClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  try {
+    const { targetUserId } = await request.json();
+
+    const { error } = await supabase
+      .from('follows')
+      .delete()
+      .match({ follower_id: user.id, following_id: targetUserId });
+
+    if (error) throw error;
+
+    return NextResponse.json({ message: 'Successfully unfollowed user' });
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
 }

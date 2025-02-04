@@ -1,4 +1,4 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
@@ -7,7 +7,24 @@ export async function GET(request) {
   const code = requestUrl.searchParams.get('code');
 
   if (code) {
-    const supabase = createRouteHandlerClient({ cookies });
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          get(name) {
+            return cookieStore.get(name)?.value;
+          },
+          set(name, value, options) {
+            cookieStore.set({ name, value, ...options });
+          },
+          remove(name, options) {
+            cookieStore.delete({ name, ...options });
+          },
+        },
+      }
+    );
     
     // Exchange the code for a session
     const { data: { session }, error: authError } = await supabase.auth.exchangeCodeForSession(code);
@@ -29,7 +46,7 @@ export async function GET(request) {
               id: session.user.id,
               email: session.user.email,
               name: session.user.user_metadata.full_name || session.user.user_metadata.name || session.user.email.split('@')[0],
-              avatar_url: session.user.user_metadata.avatar_url,
+              profile_image: session.user.user_metadata.avatar_url,
               created_at: new Date().toISOString(),
             },
           ]);
