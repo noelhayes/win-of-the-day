@@ -9,6 +9,8 @@ drop function if exists public.handle_new_user();
 -- Drop the tables in the correct dependency order
 drop table if exists public.likes cascade;
 drop table if exists public.follows cascade;
+drop table if exists public.friendships cascade;
+drop table if exists public.goals cascade;
 drop table if exists public.posts cascade;
 drop table if exists public.profiles cascade;
 
@@ -147,6 +149,12 @@ create trigger update_posts_updated_at
 before update on public.posts
 for each row execute procedure public.update_updated_at();
 
+-- Enable real-time for posts table
+alter publication supabase_realtime add table posts;
+
+-- Enable real-time for profiles table (since we need profile data in real-time updates)
+alter publication supabase_realtime add table profiles;
+
 -----------------------------------------------
 -- 4. LIKES TABLE & POLICIES
 -----------------------------------------------
@@ -212,3 +220,242 @@ create policy "Users can delete their own follows"
     on public.follows for delete
     to authenticated
     using (auth.uid() = follower_id);
+
+-----------------------------------------------
+-- 6. GOALS TABLE & POLICIES
+-----------------------------------------------
+create table public.goals (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  title text not null,
+  description text,
+  target_date date,
+  is_completed boolean default false,
+  is_shared boolean default false,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS
+alter table public.goals enable row level security;
+
+-- Policies
+create policy "Users can view their own goals"
+  on public.goals for select
+  using (auth.uid() = user_id);
+
+create policy "Users can view shared goals"
+  on public.goals for select
+  using (is_shared = true);
+
+create policy "Users can create their own goals"
+  on public.goals for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own goals"
+  on public.goals for update
+  using (auth.uid() = user_id);
+
+create policy "Users can delete their own goals"
+  on public.goals for delete
+  using (auth.uid() = user_id);
+
+-- Trigger for updated_at
+create trigger handle_updated_at before update on public.goals
+  for each row execute procedure public.update_updated_at();
+
+-----------------------------------------------
+-- 7. FRIENDSHIPS TABLE & POLICIES
+-----------------------------------------------
+create table public.friendships (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  friend_id uuid references public.profiles(id) on delete cascade not null,
+  status text check (status in ('pending', 'accepted')) not null default 'pending',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, friend_id)
+);
+
+-- Enable RLS
+alter table public.friendships enable row level security;
+
+-- Policies
+create policy "Users can view their own friendships"
+  on public.friendships for select
+  using (auth.uid() = user_id or auth.uid() = friend_id);
+
+create policy "Users can create friendship requests"
+  on public.friendships for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own friendship status"
+  on public.friendships for update
+  using (auth.uid() = user_id or auth.uid() = friend_id);
+
+create policy "Users can delete their own friendships"
+  on public.friendships for delete
+  using (auth.uid() = user_id or auth.uid() = friend_id);
+
+-- Trigger for updated_at
+create trigger handle_updated_at before update on public.friendships
+  for each row execute procedure public.update_updated_at();
+
+-- Enable real-time for new tables
+alter publication supabase_realtime add table goals;
+alter publication supabase_realtime add table friendships;
+
+-----------------------------------------------
+-- 8. STORAGE BUCKET FOR PROFILE IMAGES
+-----------------------------------------------
+
+-- Create a storage bucket for profile images
+insert into storage.buckets (id, name, public)
+values ('profile_images', 'profile_images', true);
+
+-- Create storage policy to allow authenticated users to upload their own profile image
+create policy "Users can upload their own profile image"
+on storage.objects for insert
+to authenticated
+with check (
+    bucket_id = 'profile_images' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow users to update their own profile images
+create policy "Users can update their own profile image"
+on storage.objects for update
+to authenticated
+using (
+    bucket_id = 'profile_images' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow users to delete their own profile images
+create policy "Users can delete their own profile image"
+on storage.objects for delete
+to authenticated
+using (
+    bucket_id = 'profile_images' AND
+    (storage.foldername(name))[1] = auth.uid()::text
+);
+
+-- Allow public access to profile images
+create policy "Profile images are publicly accessible"
+on storage.objects for select
+to public
+using (bucket_id = 'profile_images');
+
+-----------------------------------------------
+-- 9. WIN CATEGORIES TABLE & POLICIES
+-----------------------------------------------
+create table public.win_categories (
+  id uuid default uuid_generate_v4() primary key,
+  name text not null,
+  color text not null,
+  icon text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Add some default categories
+insert into public.win_categories (name, color, icon) values
+  ('Career', '#4F46E5', 'briefcase'),
+  ('Health', '#10B981', 'heart'),
+  ('Learning', '#F59E0B', 'book-open'),
+  ('Relationships', '#EC4899', 'users'),
+  ('Personal Growth', '#8B5CF6', 'star');
+
+-----------------------------------------------
+-- 10. POST CATEGORIES TABLE & POLICIES
+-----------------------------------------------
+create table public.post_categories (
+  post_id uuid references public.posts(id) on delete cascade,
+  category_id uuid references public.win_categories(id) on delete cascade,
+  primary key (post_id, category_id)
+);
+
+-- Enable RLS
+alter table public.post_categories enable row level security;
+
+-- Policies
+create policy "Users can view post categories"
+  on public.post_categories for select
+  using (true);
+
+create policy "Users can categorize their own posts"
+  on public.post_categories for insert
+  with check (
+    exists (
+      select 1 from public.posts
+      where id = post_id and user_id = auth.uid()
+    )
+  );
+
+-----------------------------------------------
+-- 11. HABITS TABLE & POLICIES
+-----------------------------------------------
+create table public.habits (
+  id uuid default uuid_generate_v4() primary key,
+  user_id uuid references public.profiles(id) on delete cascade not null,
+  name text not null,
+  description text,
+  frequency text not null check (frequency in ('daily', 'weekly', 'monthly')),
+  category_id uuid references public.win_categories(id),
+  goal_id uuid references public.goals(id),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  updated_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Enable RLS
+alter table public.habits enable row level security;
+
+-- Policies
+create policy "Users can view their own habits"
+  on public.habits for select
+  using (auth.uid() = user_id);
+
+create policy "Users can create their own habits"
+  on public.habits for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own habits"
+  on public.habits for update
+  using (auth.uid() = user_id);
+
+-----------------------------------------------
+-- 12. HABIT COMPLETIONS TABLE & POLICIES
+-----------------------------------------------
+create table public.habit_completions (
+  id uuid default uuid_generate_v4() primary key,
+  habit_id uuid references public.habits(id) on delete cascade not null,
+  completed_at date not null default current_date,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(habit_id, completed_at)
+);
+
+-- Enable RLS
+alter table public.habit_completions enable row level security;
+
+-- Policies
+create policy "Users can view their own habit completions"
+  on public.habit_completions for select
+  using (
+    exists (
+      select 1 from public.habits
+      where id = habit_id and user_id = auth.uid()
+    )
+  );
+
+create policy "Users can track their own habit completions"
+  on public.habit_completions for insert
+  with check (
+    exists (
+      select 1 from public.habits
+      where id = habit_id and user_id = auth.uid()
+    )
+  );
+
+-- Enable real-time for new tables
+alter publication supabase_realtime add table habits;
+alter publication supabase_realtime add table habit_completions;
+alter publication supabase_realtime add table post_categories;

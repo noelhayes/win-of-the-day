@@ -1,86 +1,106 @@
 'use client';
 
 import { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { createClient } from '../utils/supabase/client';
+import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
-export default function Post({ post, user, currentUser }) {
-  const [isLiking, setIsLiking] = useState(false);
+export default function Post({ post, profile, currentUser }) {
+  const [isLiked, setIsLiked] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
-  async function handleLike() {
-    if (isLiking) return;
-    setIsLiking(true);
-    
-    try {
-      const { error } = await supabase
-        .from('likes')
-        .insert([{ post_id: post.id, user_id: currentUser.id }]);
+  const getInitials = (name) => {
+    if (!name) return '??';
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
-      if (error) throw error;
-      router.refresh();
-    } catch (error) {
-      console.error('Error liking post:', error);
-    } finally {
-      setIsLiking(false);
-    }
-  }
+  const handleLike = async () => {
+    setIsLiked(!isLiked);
+    // Like functionality will be implemented later
+  };
+
+  // If profile is not provided, use the user_id from the post
+  const userId = profile?.id || post.user_id;
+  const userName = profile?.name || 'Anonymous';
+  const profileImage = profile?.profile_image;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="flex items-center mb-4">
-        <div className="h-10 w-10 rounded-full bg-gray-200 flex-shrink-0">
-          {user?.profile_image ? (
-            <img
-              src={user.profile_image}
-              alt={user.name}
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center">
-              <span className="text-white text-sm font-medium">
-                {user?.name?.charAt(0) || '?'}
-              </span>
-            </div>
-          )}
-        </div>
-        <div className="ml-3">
-          <p className="text-sm font-medium text-gray-900">{user?.name || 'Anonymous'}</p>
-          <p className="text-xs text-gray-500">
-            {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+    <div className="bg-white rounded-xl shadow-soft p-5 mb-4">
+      <div className="flex items-start space-x-4">
+        <Link href={`/profile/${userId}`} className="flex-shrink-0">
+          <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-lg font-medium text-white hover:opacity-90 transition-opacity duration-200 overflow-hidden">
+            {profileImage ? (
+              profileImage.startsWith('https://') ? (
+                <Image
+                  src={profileImage}
+                  alt={userName}
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                />
+              ) : (
+                <img
+                  src={profileImage}
+                  alt={userName}
+                  className="h-full w-full object-cover"
+                />
+              )
+            ) : (
+              <span>{getInitials(userName)}</span>
+            )}
+          </div>
+        </Link>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2">
+            <Link 
+              href={`/profile/${userId}`}
+              className="font-medium text-surface-900 hover:text-primary-500 transition-colors duration-200"
+            >
+              {userName}
+            </Link>
+            <span className="text-surface-400 text-sm">
+              {new Date(post.created_at).toLocaleDateString()}
+            </span>
+          </div>
+          
+          <p className="mt-2 text-surface-600 whitespace-pre-wrap break-words">
+            {post.content}
           </p>
+
+          <div className="mt-4 flex items-center space-x-4">
+            <button
+              onClick={handleLike}
+              className={`flex items-center space-x-1.5 text-sm font-medium transition-colors duration-200 ${
+                isLiked
+                  ? 'text-primary-500'
+                  : 'text-surface-400 hover:text-primary-500'
+              }`}
+            >
+              <svg
+                className="w-5 h-5"
+                fill={isLiked ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
+              </svg>
+              <span>{isLiked ? 'Liked' : 'Like'}</span>
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="prose prose-blue max-w-none mb-4">
-        <p className="text-gray-900">{post.content}</p>
-      </div>
-
-      <div className="flex items-center justify-between border-t pt-4">
-        <button
-          onClick={handleLike}
-          disabled={isLiking}
-          className={`flex items-center space-x-2 text-sm font-medium ${
-            isLiking ? 'text-gray-400' : 'text-blue-600 hover:text-blue-700'
-          }`}
-        >
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-            />
-          </svg>
-          <span>{post.likes?.length || 0} likes</span>
-        </button>
       </div>
     </div>
   );

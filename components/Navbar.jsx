@@ -39,51 +39,60 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="bg-gradient-to-r from-indigo-900 to-purple-900 shadow-lg relative">
+      {/* Decorative elements */}
+      <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-transparent"></div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="flex justify-between h-16">
-          <div className="flex">
-            <Link href="/" className="flex-shrink-0 flex items-center">
-              <span className="text-xl font-bold text-blue-600">WofD</span>
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center group">
+              <span className="text-2xl font-bold bg-gradient-to-r from-white to-indigo-200 bg-clip-text text-transparent group-hover:to-white transition-all duration-300">
+                WOTD
+              </span>
             </Link>
           </div>
-          <div className="flex items-center">
+
+          <div className="flex items-center space-x-2">
             {session ? (
-              <div className="flex items-center space-x-4">
-                <Link 
+              <>
+                <Link
                   href="/feed"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-indigo-100 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-white/10"
                 >
                   Feed
                 </Link>
-                <Link 
+                
+                <Link
                   href="/profile"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-indigo-100 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-white/10"
                 >
                   Profile
                 </Link>
+                
                 <button
                   onClick={handleSignOut}
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-indigo-100 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-white/10"
                 >
                   Sign Out
                 </button>
-              </div>
+              </>
             ) : (
-              <div className="flex items-center space-x-4">
+              <>
                 <Link 
                   href="/feed"
-                  className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-indigo-100 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 hover:bg-white/10"
                 >
                   Feed
                 </Link>
                 <Link 
                   href="/"
-                  className="bg-blue-600 text-white hover:bg-blue-700 px-4 py-2 rounded-md text-sm font-medium"
+                  className="bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm shadow-black/20 transition-all duration-200 hover:shadow-md hover:shadow-black/20 border border-white/10"
                 >
                   Sign In
                 </Link>
-              </div>
+              </>
             )}
           </div>
         </div>

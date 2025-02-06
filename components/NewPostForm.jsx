@@ -1,90 +1,119 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../utils/supabase/client';
 
-export default function NewPostForm() {
+export default function NewPostForm({ onPostCreated }) {
   const [content, setContent] = useState('');
-  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const textareaRef = useRef(null);
   const router = useRouter();
   const supabase = createClient();
 
-  async function handleSubmit(e) {
+  const adjustTextareaHeight = () => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = Math.min(textarea.scrollHeight, 300) + 'px';
+    }
+  };
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [content]);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     setError('');
-    
-    if (!content.trim()) return;
-    
+
     try {
-      setIsSubmitting(true);
-      console.log('Creating new post...');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('You must be logged in to post');
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) {
-        console.error('User error:', userError);
-        router.push('/');
-        return;
-      }
-
-      console.log('Current user:', user);
-
-      const { error: postError, data: newPost } = await supabase
+      const { data: newPost, error: postError } = await supabase
         .from('posts')
-        .insert([{ 
-          content: content.trim(),
-          user_id: user.id,
-          created_at: new Date().toISOString()
-        }])
-        .select()
+        .insert([
+          {
+            content,
+            user_id: user.id,
+          }
+        ])
+        .select(`
+          *,
+          profile:profiles(*)
+        `)
         .single();
-
-      console.log('Post creation result:', { newPost, postError });
 
       if (postError) throw postError;
       
       setContent('');
-      router.refresh();
+      if (onPostCreated) {
+        onPostCreated(newPost);
+      }
     } catch (err) {
       console.error('Error creating post:', err);
       setError(err.message);
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6">
-      <div className="mb-4">
-        <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
-          Share your win of the day
-        </label>
+    <form onSubmit={handleSubmit} className="bg-surface-50 rounded-xl shadow-soft p-5 mb-6 border border-surface-200">
+      <div className="relative">
         <textarea
-          id="content"
+          ref={textareaRef}
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="What's your win of the day?"
-          rows={3}
-          className="w-full p-3 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+          className="w-full min-h-[60px] max-h-[300px] p-4 pb-16 rounded-lg bg-white border border-surface-200 placeholder-surface-300 text-surface-800 focus:ring-2 focus:ring-primary-300 focus:border-primary-300 transition-all duration-200 ease-in-out resize-none overflow-auto"
         />
+        
+        <div className="absolute bottom-3 right-3 flex items-center space-x-2">
+          <button
+            type="button"
+            className="p-2 text-surface-400 hover:text-primary-500 transition-colors duration-200"
+            onClick={() => alert('Photo upload coming soon!')}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+
+          <button
+            type="submit"
+            disabled={isSubmitting || !content.trim()}
+            className={`
+              px-4 py-1.5 rounded-lg font-medium text-white text-sm
+              transition-all duration-200 ease-in-out
+              ${isSubmitting || !content.trim() 
+                ? 'bg-surface-200 cursor-not-allowed' 
+                : 'bg-primary-500 hover:bg-primary-600 active:bg-primary-700'
+              }
+            `}
+          >
+            {isSubmitting ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Sharing...</span>
+              </div>
+            ) : (
+              'Share Win'
+            )}
+          </button>
+        </div>
+        
+        {error && (
+          <div className="absolute left-0 -bottom-6 text-red-500 text-sm">
+            {error}
+          </div>
+        )}
       </div>
-      
-      {error && (
-        <div className="mb-4 text-sm text-red-600">{error}</div>
-      )}
-      
-      <button
-        type="submit"
-        disabled={isSubmitting || !content.trim()}
-        className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-          isSubmitting || !content.trim()
-            ? 'bg-blue-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
-        }`}
-      >
-        {isSubmitting ? 'Posting...' : 'Share Win'}
-      </button>
     </form>
   );
 }

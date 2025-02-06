@@ -42,6 +42,11 @@ export async function updateSession(request) {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (userError) {
+    if (userError.name === 'AuthSessionMissingError') {
+      // This is expected during static page generation
+      console.log('No auth session (expected during static generation)');
+      return response;
+    }
     console.error('Error getting user in middleware:', userError);
     return response;
   }
