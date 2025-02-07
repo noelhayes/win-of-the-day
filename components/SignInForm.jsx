@@ -25,7 +25,7 @@ export default function SignInForm() {
 
     try {
       if (isSignUp) {
-        // Server-side signup will be handled by the API route
+        // Server-side signup is handled by the API route.
         const response = await fetch('/api/auth/signup', {
           method: 'POST',
           headers: {
@@ -43,21 +43,22 @@ export default function SignInForm() {
         if (!response.ok) throw new Error(data.error);
 
         // After successful signup, sign in the user
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error: signInError } = await supabase.auth.signInWithPassword(
+          { email, password },
+          { redirectTo: window.location.origin } // Explicitly set the redirect URL.
+        );
 
         if (signInError) throw signInError;
       } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+        const { error: signInError } = await supabase.auth.signInWithPassword(
+          { email, password },
+          { redirectTo: window.location.origin } // Explicitly set the redirect URL.
+        );
 
         if (signInError) throw signInError;
       }
 
+      // Refresh the current route after sign in.
       router.refresh();
     } catch (err) {
       setError(err.message);
@@ -73,7 +74,11 @@ export default function SignInForm() {
           <div className="flex">
             <div className="flex-shrink-0">
               <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clipRule="evenodd"
+                />
               </svg>
             </div>
             <div className="ml-3">

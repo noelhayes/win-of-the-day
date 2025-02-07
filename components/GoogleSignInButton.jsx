@@ -1,6 +1,7 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
+import config from '../utils/config';
 
 export default function GoogleSignInButton() {
   const supabase = createBrowserClient(
@@ -12,7 +13,7 @@ export default function GoogleSignInButton() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: `${config.baseUrl}/api/auth/callback`
       }
     });
   };

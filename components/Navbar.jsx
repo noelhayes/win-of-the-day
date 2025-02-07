@@ -1,19 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '../utils/supabase/client';
 import { useEffect, useState } from 'react';
 import SearchBar from './SearchBar';
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const supabase = createClient();
 
   useEffect(() => {
     async function getUser() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setUser(user);
     }
     getUser();
@@ -21,12 +24,22 @@ export default function Navbar() {
 
   const isActive = (path) => pathname === path;
 
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error);
+    } else {
+      setUser(null);
+      router.push('/');
+    }
+  };
+
   return (
     <nav className="bg-gradient-to-r from-indigo-900 via-indigo-800 to-purple-900 relative">
       {/* Subtle grid pattern overlay */}
       <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
       <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-transparent"></div>
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="flex justify-between h-16">
           {/* Left section */}
@@ -55,18 +68,26 @@ export default function Navbar() {
             >
               Feed
             </Link>
-            
+
             {user && (
-              <Link
-                href={`/profile/${user.id}`}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  pathname.startsWith('/profile')
-                    ? 'text-white bg-white/10'
-                    : 'text-indigo-100 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                Profile
-              </Link>
+              <>
+                <Link
+                  href={`/profile/${user.id}`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    pathname.startsWith('/profile')
+                      ? 'text-white bg-white/10'
+                      : 'text-indigo-100 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  Profile
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 text-indigo-100 hover:text-white hover:bg-white/10"
+                >
+                  Sign Out
+                </button>
+              </>
             )}
           </div>
         </div>
