@@ -5,60 +5,95 @@ import { createClient } from '../utils/supabase/client';
 import { Upload, X } from 'lucide-react';
 import Image from 'next/image';
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 export default function ProfileImageUpload({ currentImage, onUploadComplete, displayName = 'U' }) {
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState(null);
+  const [error, setError] = useState(null);
   const supabase = createClient();
 
-  const uploadImage = async (event) => {
+  const uploadImage = async (file) => {
     try {
       setUploading(true);
-      
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('You must select an image to upload.');
+      setError(null);
+
+      if (!file) {
+        throw new Error('No file selected');
       }
 
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop();
-      const filePath = `${Math.random()}.${fileExt}`;
+      // Validate file size
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error('File size must be less than 5MB');
+      }
 
-      // Upload image to Supabase storage
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        throw new Error('File must be an image');
+      }
+
+      // Create a unique file name
+      const fileExt = file.type.split('/')[1];
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+      // First check if the bucket exists and is accessible
+      const { data: bucketData, error: bucketError } = await supabase
+        .storage
+        .getBucket('profile-images');
+
+      if (bucketError) {
+        console.error('Bucket error:', bucketError);
+        throw new Error('Storage system is not properly configured');
+      }
+
+      // Upload the file
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
-        .upload(filePath, file);
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: file.type
+        });
 
       if (uploadError) {
+        console.error('Upload error:', uploadError);
         throw uploadError;
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
+      // Get the public URL
+      const { data: urlData } = supabase.storage
         .from('profile-images')
-        .getPublicUrl(filePath);
+        .getPublicUrl(fileName);
 
-      // Update profile
-      onUploadComplete(publicUrl);
+      if (!urlData?.publicUrl) {
+        throw new Error('Failed to get public URL for uploaded image');
+      }
+
+      // Update profile with new image URL
+      onUploadComplete(urlData.publicUrl);
       
     } catch (error) {
       console.error('Error uploading image:', error);
-      alert('Error uploading image');
+      setError(error.message || 'Error uploading image');
+      setPreview(null);
     } finally {
       setUploading(false);
-      setPreview(null);
     }
   };
 
-  const handleFileChange = (event) => {
-    if (!event.target.files || event.target.files.length === 0) {
-      return;
-    }
+  const handleFileChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    const file = event.target.files[0];
+    // Create preview
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
 
     // Upload the file
-    uploadImage(event);
+    await uploadImage(file);
+
+    // Clean up preview URL
+    return () => URL.revokeObjectURL(objectUrl);
   };
 
   return (
@@ -94,6 +129,12 @@ export default function ProfileImageUpload({ currentImage, onUploadComplete, dis
           <span className="text-4xl font-bold text-indigo-600">
             {displayName[0].toUpperCase()}
           </span>
+        </div>
+      )}
+      
+      {error && (
+        <div className="absolute -bottom-8 left-0 right-0 text-center text-sm bg-red-50 text-red-500 p-2 rounded-lg">
+          {error}
         </div>
       )}
     </div>
