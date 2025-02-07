@@ -59,39 +59,3 @@ Win of the Day is a modern social platform that transforms how we maintain meani
    ```bash
    npm run dev
    ```
-
-## 📚 Database Setup
-
-1. Create a new project on [Supabase](https://supabase.com)
-2. Go to the SQL editor in your Supabase dashboard
-3. Run the following migrations (available in the `/supabase/migrations` folder):
-   - User profiles
-   - Wins table
-   - Friendships
-   - Notifications
-
-## 🚀 Deployment
-
-This project is deployed on [Vercel](https://vercel.com). To deploy your own instance:
-
-1. Fork this repository
-2. Create a new project on Vercel
-3. Connect your forked repository
-4. Add the following environment variables in Vercel:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `NEXT_PUBLIC_SITE_URL`
-5. Deploy!
-
-## 💭 Philosophy
-
-Win of the Day embodies the belief that meaningful connections should be maintained through small, consistent interactions rather than periodic catch-ups. By sharing our daily wins and reflections, we create a continuous thread of connection with the people who matter most.
-
-## 🤝 Contributing
-
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/noelhayes/win-of-the-day/issues).
-
-## 📝 License
-
-This project is [MIT](LICENSE) licensed.
