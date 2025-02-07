@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '../utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 export default function FriendsList({ userId }) {
   const [friends, setFriends] = useState([]);
@@ -10,47 +11,56 @@ export default function FriendsList({ userId }) {
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const supabase = createClient();
+  const router = useRouter();
 
+  // Load the users that the current user is following.
   useEffect(() => {
-    loadFriends();
+    if (userId) {
+      loadFollowedUsers();
+    }
   }, [userId]);
 
-  const loadFriends = async () => {
+  const loadFollowedUsers = async () => {
     try {
-      // Get accepted friendships where the user is either the user_id or friend_id
+      setLoading(true);
       const { data, error } = await supabase
-        .from('friendships')
+        .from('follows')
         .select(`
           id,
-          status,
-          friend:profiles!friendships_friend_id_fkey(id, name, email, profile_image),
-          user:profiles!friendships_user_id_fkey(id, name, email, profile_image)
+          follower_id,
+          following_id,
+          following:profiles!follows_following_id_fkey(id, name, email, profile_image)
         `)
-        .or(`user_id.eq.${userId},friend_id.eq.${userId}`)
-        .eq('status', 'accepted');
-
+        .eq('follower_id', userId);
       if (error) throw error;
 
-      // Transform the data to get a list of friend profiles
-      const friendsList = data.map(friendship => {
-        const friend = friendship.user_id === userId ? friendship.friend : friendship.user;
-        return { ...friend, friendship_id: friendship.id };
-      });
-
-      setFriends(friendsList || []);
+      // Map the follow records to get the followed user's profile.
+      const followedUsers = data.map((follow) => ({
+        ...follow.following,
+        follow_id: follow.id,
+      }));
+      setFriends(followedUsers || []);
     } catch (error) {
-      console.error('Error loading friends:', error);
+      console.error('Error loading followed users:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const searchUsers = async (query) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
+  // Debounce the search input to reduce unnecessary queries.
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchQuery.trim() !== '') {
+        searchUsers(searchQuery);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
 
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+  const searchUsers = async (query) => {
     try {
       setSearching(true);
       const { data, error } = await supabase
@@ -59,13 +69,11 @@ export default function FriendsList({ userId }) {
         .ilike('name', `%${query}%`)
         .neq('id', userId)
         .limit(5);
-
       if (error) throw error;
 
-      // Filter out users who are already friends
-      const friendIds = friends.map(friend => friend.id);
-      const filteredResults = data.filter(user => !friendIds.includes(user.id));
-
+      // Filter out users already followed.
+      const followedIds = friends.map((user) => user.id);
+      const filteredResults = data.filter((user) => !followedIds.includes(user.id));
       setSearchResults(filteredResults);
     } catch (error) {
       console.error('Error searching users:', error);
@@ -74,43 +82,45 @@ export default function FriendsList({ userId }) {
     }
   };
 
-  const sendFriendRequest = async (friendId) => {
+  // Inserts a new follow record into the "follows" table.
+  const followUser = async (followId) => {
     try {
-      const { error } = await supabase
-        .from('friendships')
-        .insert([
-          {
-            user_id: userId,
-            friend_id: friendId,
-            status: 'pending'
-          }
-        ]);
-
+      const { error } = await supabase.from('follows').insert([
+        {
+          follower_id: userId,
+          following_id: followId,
+        },
+      ]);
       if (error) throw error;
 
-      // Clear search results and query
+      // Optionally, refresh the list of followed users.
+      loadFollowedUsers();
+
+      // Clear search results and the query.
       setSearchResults([]);
       setSearchQuery('');
     } catch (error) {
-      console.error('Error sending friend request:', error);
-      alert('Error sending friend request. Please try again.');
+      console.error('Error following user:', error);
+      alert('Error following user. Please try again.');
     }
+  };
+
+  const viewProfile = (profileId) => {
+    router.push(`/profile/${profileId}`);
   };
 
   return (
     <div className="bg-white rounded-xl shadow-soft p-6">
       <h2 className="text-xl font-bold text-surface-900 mb-6">Friends</h2>
 
+      {/* Search Input */}
       <div className="mb-6">
         <div className="relative">
           <input
             type="text"
             placeholder="Search for friends..."
             value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              searchUsers(e.target.value);
-            }}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full p-3 pl-10 bg-surface-50 border border-surface-200 rounded-lg placeholder-surface-400 focus:ring-2 focus:ring-primary-300 focus:border-primary-300"
           />
           <svg
@@ -141,13 +151,13 @@ export default function FriendsList({ userId }) {
 
         {searchResults.length > 0 && (
           <div className="mt-2 bg-white border border-surface-200 rounded-lg shadow-lg">
-            {searchResults.map(user => (
+            {searchResults.map((user) => (
               <div
                 key={user.id}
                 className="flex items-center justify-between p-3 hover:bg-surface-50 border-b last:border-b-0"
               >
                 <div className="flex items-center">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-lg font-medium text-white">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-lg font-medium text-white overflow-hidden">
                     {user.profile_image ? (
                       <img
                         src={user.profile_image}
@@ -164,10 +174,10 @@ export default function FriendsList({ userId }) {
                   </div>
                 </div>
                 <button
-                  onClick={() => sendFriendRequest(user.id)}
+                  onClick={() => followUser(user.id)}
                   className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
                 >
-                  Add Friend
+                  Follow
                 </button>
               </div>
             ))}
@@ -175,6 +185,7 @@ export default function FriendsList({ userId }) {
         )}
       </div>
 
+      {/* Followed Users List */}
       <div className="space-y-4">
         {loading ? (
           <div className="flex justify-center py-8">
@@ -185,13 +196,13 @@ export default function FriendsList({ userId }) {
             No friends yet. Use the search bar to find friends!
           </p>
         ) : (
-          friends.map(friend => (
+          friends.map((friend) => (
             <div
-              key={friend.id}
+              key={friend.follow_id}
               className="flex items-center justify-between p-4 bg-surface-50 rounded-lg hover:bg-surface-100 transition-colors duration-200"
             >
               <div className="flex items-center">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-xl font-medium text-white">
+                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-xl font-medium text-white overflow-hidden">
                   {friend.profile_image ? (
                     <img
                       src={friend.profile_image}
@@ -208,7 +219,7 @@ export default function FriendsList({ userId }) {
                 </div>
               </div>
               <button
-                onClick={() => {/* View friend's profile */}}
+                onClick={() => viewProfile(friend.id)}
                 className="px-4 py-2 text-surface-500 hover:text-primary-500 transition-colors duration-200"
               >
                 View Profile
