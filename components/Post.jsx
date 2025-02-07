@@ -1,16 +1,40 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '../utils/supabase/client';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 
-export default function Post({ post, profile, currentUser }) {
+export default function Post({ post, profile, currentUser, onUpdate }) {
   const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    checkIfLiked();
+  }, [post.id, currentUser?.id]);
+
+  const checkIfLiked = async () => {
+    if (!currentUser?.id || !post.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('post_id', post.id)
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      setIsLiked(!!data);
+    } catch (error) {
+      console.error('Error checking like status:', error);
+    }
+  };
 
   const getInitials = (name) => {
     if (!name) return '??';
@@ -23,8 +47,45 @@ export default function Post({ post, profile, currentUser }) {
   };
 
   const handleLike = async () => {
-    setIsLiked(!isLiked);
-    // Like functionality will be implemented later
+    if (!currentUser?.id) {
+      router.push('/login');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      if (isLiked) {
+        // Unlike the post
+        const { error } = await supabase
+          .from('likes')
+          .delete()
+          .eq('post_id', post.id)
+          .eq('user_id', currentUser.id);
+
+        if (error) throw error;
+        setLikesCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Like the post
+        const { error } = await supabase
+          .from('likes')
+          .insert({
+            post_id: post.id,
+            user_id: currentUser.id
+          });
+
+        if (error) throw error;
+        setLikesCount(prev => prev + 1);
+      }
+
+      setIsLiked(!isLiked);
+      // Call onUpdate after successful like/unlike
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // If profile is not provided, use the user_id from the post
@@ -32,44 +93,45 @@ export default function Post({ post, profile, currentUser }) {
   const userName = profile?.name || 'Anonymous';
   const profileImage = profile?.profile_image;
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
-  const category = post.categories;
+  const category = post.category;
 
   return (
     <div 
-      className="bg-white rounded-xl shadow-soft overflow-hidden mb-4"
+      className="bg-white rounded-xl shadow-soft overflow-hidden relative"
       style={{
         borderLeft: category ? `4px solid ${category.color}` : undefined,
         boxShadow: category ? `0 4px 6px -1px ${category.color}15, 0 2px 4px -2px ${category.color}10` : undefined
       }}
     >
-      {/* Category Header */}
-      {category && (
-        <div className="px-5 py-2 flex items-center justify-between border-b border-gray-100">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-600">Posted {timeAgo}</span>
+      <div className="p-5">
+        {/* Category and timestamp header */}
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-sm font-medium text-gray-600">
+            Posted {timeAgo}
             {post.is_private && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+              <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                 <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 Private
               </span>
             )}
-          </div>
-          <div 
-            className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-sm font-medium"
-            style={{
-              backgroundColor: `${category.color}15`,
-              color: category.color
-            }}
-          >
-            <span className="text-base">{category.icon}</span>
-            <span>{category.name}</span>
-          </div>
+          </span>
+          {category && (
+            <div 
+              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-sm font-medium"
+              style={{
+                backgroundColor: `${category.color}15`,
+                color: category.color
+              }}
+            >
+              <span className="text-base">{category.icon}</span>
+              <span>{category.name}</span>
+            </div>
+          )}
         </div>
-      )}
 
-      <div className="p-5">
+        {/* User info and content */}
         <div className="flex items-start space-x-4">
           <Link href={`/profile/${userId}`} className="flex-shrink-0">
             <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-lg font-medium text-white hover:opacity-90 transition-opacity duration-200 overflow-hidden">
@@ -108,11 +170,12 @@ export default function Post({ post, profile, currentUser }) {
             <div className="mt-4 flex items-center space-x-4">
               <button
                 onClick={handleLike}
+                disabled={isLoading}
                 className={`flex items-center space-x-1 text-sm font-medium transition-colors duration-200 ${
                   isLiked
                     ? 'text-red-500 hover:text-red-600'
                     : 'text-gray-500 hover:text-gray-600'
-                }`}
+                } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 <svg
                   className={`w-5 h-5 ${isLiked ? 'fill-current' : 'stroke-current fill-none'}`}
@@ -127,6 +190,11 @@ export default function Post({ post, profile, currentUser }) {
                   />
                 </svg>
                 <span>{isLiked ? 'Liked' : 'Like'}</span>
+                {likesCount > 0 && (
+                  <span className="ml-1 text-xs bg-gray-100 px-1.5 py-0.5 rounded-full">
+                    {likesCount}
+                  </span>
+                )}
               </button>
 
               <button className="flex items-center space-x-1 text-sm font-medium text-gray-500 hover:text-gray-600 transition-colors duration-200">

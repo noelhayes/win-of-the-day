@@ -34,11 +34,6 @@ create table if not exists public.post_images (
 );
 
 begin;
-    -- First drop the post_categories policies
-    drop policy if exists "Post categories are viewable by everyone" on post_categories;
-    drop policy if exists "Users can categorize their posts" on post_categories;
-    drop policy if exists "Users can remove categories from their posts" on post_categories;
-
     -- Drop the existing foreign key constraints
     alter table public.posts 
     drop constraint if exists posts_user_id_fkey;
@@ -58,31 +53,6 @@ begin;
     foreign key (user_id)
     references auth.users(id)
     on delete cascade;
-
-    -- Recreate post_categories policies
-    create policy "Post categories are viewable by everyone"
-        on post_categories for select
-        using (true);
-
-    create policy "Users can categorize their posts"
-        on post_categories for insert
-        with check (
-            exists (
-                select 1 from public.posts
-                where id = post_categories.post_id
-                and auth.uid() = user_id
-            )
-        );
-
-    create policy "Users can remove categories from their posts"
-        on post_categories for delete
-        using (
-            exists (
-                select 1 from public.posts
-                where id = post_categories.post_id
-                and auth.uid() = user_id
-            )
-        );
 commit;
 
 -- Enable RLS
