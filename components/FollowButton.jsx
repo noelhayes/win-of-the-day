@@ -1,0 +1,67 @@
+'use client';
+
+import { useState } from 'react';
+import { createClient } from '../utils/supabase/client';
+
+export default function FollowButton({ targetUserId, initialIsFollowing = false }) {
+  const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
+  const [isLoading, setIsLoading] = useState(false);
+  const supabase = createClient();
+
+  const toggleFollow = async () => {
+    try {
+      setIsLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('User must be logged in to follow/unfollow');
+        return;
+      }
+
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from('follows')
+          .delete()
+          .match({ follower_id: user.id, following_id: targetUserId });
+
+        if (error) throw error;
+      } else {
+        // Follow
+        const { error } = await supabase
+          .from('follows')
+          .insert([
+            { follower_id: user.id, following_id: targetUserId }
+          ]);
+
+        if (error) throw error;
+      }
+
+      setIsFollowing(!isFollowing);
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={toggleFollow}
+      disabled={isLoading}
+      className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-200 ${
+        isFollowing
+          ? 'bg-gray-100 text-gray-800 hover:bg-red-50 hover:text-red-600'
+          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+      }`}
+    >
+      {isLoading ? (
+        <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin mx-auto" />
+      ) : isFollowing ? (
+        'Following'
+      ) : (
+        'Follow'
+      )}
+    </button>
+  );
+}

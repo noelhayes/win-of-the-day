@@ -2,14 +2,14 @@
 
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import FollowButton from '../../../components/FollowButton';
-import { useSupabase } from '../../../lib/supabaseClient';
+import FollowButton from '../../../../components/FollowButton';
+import { createClient } from '../../../../utils/supabase/client';
 
 export default function ProfilePage() {
   const { userId } = useParams();
   const [userProfile, setUserProfile] = useState(null);
   const [posts, setPosts] = useState([]);
-  const supabase = useSupabase();
+  const supabase = createClient();
 
   async function fetchProfile() {
     // Fetch user info from Supabase (assumes a "users" table)

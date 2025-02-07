@@ -1,14 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../../../lib/supabaseClient';
+import { createClient } from '../../../../utils/supabase/client';
+import ProfileImageUpload from '../../../../components/ProfileImageUpload';
 
 export default function EditProfilePage() {
+  const router = useRouter();
+  const [profile, setProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const supabase = createClient();
   const [user, setUser] = useState(null);
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
-  const router = useRouter();
 
   useEffect(() => {
     (async () => {
