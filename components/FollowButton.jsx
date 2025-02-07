@@ -18,23 +18,45 @@ export default function FollowButton({ targetUserId, initialIsFollowing = false 
         return;
       }
 
+      // The auth user ID is the same as the profile ID
+      const currentProfileId = user.id;
+      console.log('Current profile ID:', currentProfileId);
+      console.log('Target user ID:', targetUserId);
+      console.log('Current follow state:', isFollowing);
+
       if (isFollowing) {
+        console.log('Attempting to unfollow...');
         // Unfollow
         const { error } = await supabase
           .from('follows')
           .delete()
-          .match({ follower_id: user.id, following_id: targetUserId });
+          .match({ 
+            follower_id: currentProfileId, 
+            following_id: targetUserId 
+          });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error unfollowing:', error);
+          return;
+        }
+        console.log('Unfollow successful');
       } else {
+        console.log('Attempting to follow...');
         // Follow
         const { error } = await supabase
           .from('follows')
           .insert([
-            { follower_id: user.id, following_id: targetUserId }
+            { 
+              follower_id: currentProfileId, 
+              following_id: targetUserId 
+            }
           ]);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Error following:', error);
+          return;
+        }
+        console.log('Follow successful');
       }
 
       setIsFollowing(!isFollowing);

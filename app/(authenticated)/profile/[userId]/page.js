@@ -59,14 +59,23 @@ export default function ProfilePage() {
 
         // Check if current user is following this profile
         if (userData.data.user && userId !== userData.data.user.id) {
-          const { data: followData } = await supabase
-            .from('follows')
-            .select('*')
-            .eq('follower_id', userData.data.user.id)
-            .eq('following_id', userId)
-            .maybeSingle();
-          
-          setIsFollowing(!!followData);
+          // Get current user's profile ID
+          const { data: currentProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('auth_user_id', userData.data.user.id)
+            .single();
+
+          if (!profileError && currentProfile) {
+            const { data: followData } = await supabase
+              .from('follows')
+              .select('*')
+              .eq('follower_id', currentProfile.id)
+              .eq('following_id', userId)
+              .maybeSingle();
+            
+            setIsFollowing(!!followData);
+          }
         }
       } catch (error) {
         console.error('Error loading profile data:', error);

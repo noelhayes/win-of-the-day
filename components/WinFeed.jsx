@@ -21,7 +21,21 @@ export default function WinFeed({ currentUser }) {
     try {
       console.log('Loading posts...');
       
-      // First get all posts with their related data
+      // Get the list of users the current user follows
+      const { data: followedUsers, error: followError } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', currentUser.id);
+
+      if (followError) throw followError;
+
+      // Create array of user IDs to fetch posts from (followed users + current user)
+      const userIds = [
+        currentUser.id,
+        ...followedUsers.map(follow => follow.following_id)
+      ];
+      
+      // Fetch posts from followed users and self
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -38,12 +52,12 @@ export default function WinFeed({ currentUser }) {
             icon
           )
         `)
+        .in('user_id', userIds)
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;
 
       // Get profiles for all user_ids
-      const userIds = [...new Set(postsData.map(post => post.user_id))];
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, name, profile_image')
