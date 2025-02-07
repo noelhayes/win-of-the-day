@@ -1,67 +1,123 @@
-# Database Management
+# Win of the Day - Supabase Schema
 
-This directory contains all the database-related files for the Win of the Day application.
+This directory contains the database schema and migrations for the Win of the Day application. The schema is designed to be simple, maintainable, and focused on the core features of sharing and celebrating daily wins.
 
-## Directory Structure
+## Schema Structure
 
-```
-supabase/
-├── migrations/     # Database schema changes
-├── storage/       # Storage bucket and policy setup
-└── seeds/         # Initial and test data
-```
+The database schema is organized into logical files, each handling a specific aspect of the application:
 
-## Migration Strategy
+1. `01_profiles.sql`: User profiles and authentication
+   - Profiles table with basic user information
+   - Automatic profile creation on user signup
+   - RLS policies for profile access
 
-We follow these principles for database changes:
+2. `02_social.sql`: Social relationships
+   - Follows system for connecting users
+   - One-way follow relationships (like Twitter/Instagram)
+   - RLS policies for follow management
 
-1. **Never drop tables** in production. Instead, use migrations to alter existing tables.
-2. **Idempotent changes** - All scripts can be run multiple times safely
-3. **Version control** - All database changes are tracked in git
+3. `03_posts.sql`: Posts and interactions
+   - Posts table for sharing wins
+   - Likes for engaging with posts
+   - Post images support
+   - RLS policies for post privacy
 
-### Making Database Changes
+4. `04_categories.sql`: Win categorization
+   - Predefined win categories
+   - Post categorization system
+   - Default categories (Health, Work, etc.)
+   - RLS policies for categories
 
-1. For new features requiring schema changes:
-   - Create a new migration file in `migrations/` with format `NNNN_feature_name.sql`
-   - Use `create table if not exists` for new tables
-   - Use `alter table if exists` for modifying tables
-   - Always use idempotent commands (check if changes exist before applying)
+5. `05_habits.sql`: Habits and tracking
+   - Habits table for recurring wins
+   - Habit completion tracking
+   - RLS policies for habit privacy
 
-2. For storage changes:
-   - Add new buckets and policies to `storage/setup.sql`
-   - Use `if not exists` checks for all changes
+6. `06_storage.sql`: File storage
+   - Storage bucket for post images
+   - Security policies for file access
 
-3. For data changes:
-   - Add to `seeds/` directory
-   - Use `where not exists` for inserts
+## Security Model
 
-### Example Migration
+- Row Level Security (RLS) is enabled on all tables
+- Each table has specific policies for:
+  - SELECT: Who can view the data
+  - INSERT: Who can create new records
+  - UPDATE: Who can modify existing records
+  - DELETE: Who can remove records
 
+## Making Schema Changes
+
+When making changes to the schema, follow these guidelines:
+
+1. Create a new migration file in the `examples/` directory
+2. Name it following the pattern: `YYYYMMDD_XX_description.sql`
+3. Include both `up.sql` (changes) and `down.sql` (rollback)
+4. Test migrations locally before applying to production
+5. Document changes in this README
+
+## Common Operations
+
+### Adding a New Table
 ```sql
--- Add new column
-do $$
-begin
-    if not exists (
-        select 1
-        from information_schema.columns
-        where table_name = 'my_table'
-        and column_name = 'new_column'
-    ) then
-        alter table my_table add column new_column text;
-    end if;
-end
-$$;
+-- Create the table
+create table if not exists public.new_table (
+    id uuid default gen_random_uuid() primary key,
+    created_at timestamp with time zone default timezone('utc', now()) not null
+);
+
+-- Enable RLS
+alter table public.new_table enable row level security;
+
+-- Create policies
+create policy "Policy name"
+    on new_table for select
+    using (true);
 ```
 
-## Running Migrations
+### Modifying an Existing Table
+```sql
+-- Add a column
+alter table public.existing_table
+add column if not exists new_column text;
 
-1. Run initial setup (only once):
-   ```sql
-   \i migrations/0001_initial_schema.sql
-   \i storage/setup.sql
-   \i seeds/initial_data.sql
-   ```
+-- Add a constraint
+alter table public.existing_table
+add constraint constraint_name check (condition);
 
-2. For subsequent changes:
-   - Run only the new migration files
-   - Storage and seed files are safe to re-run
+-- Create an index
+create index if not exists idx_name
+on public.existing_table(column_name);
+```
+
+### Adding RLS Policies
+```sql
+-- Basic select policy
+create policy "Select policy"
+    on table_name for select
+    using (true);
+
+-- Owner-only policy
+create policy "Owner only"
+    on table_name for all
+    using (auth.uid() = user_id);
+```
+
+## Development Workflow
+
+1. Make changes in a development environment first
+2. Test thoroughly with sample data
+3. Create migration files in `examples/`
+4. Apply migrations to staging
+5. Test in staging environment
+6. Apply to production during low-traffic periods
+
+## Best Practices
+
+1. Always enable RLS on new tables
+2. Include appropriate indexes for foreign keys
+3. Add appropriate constraints to ensure data integrity
+4. Document all changes in migration files
+5. Keep migrations atomic and focused
+6. Include rollback instructions in `down.sql`
+7. Test both applying and rolling back migrations

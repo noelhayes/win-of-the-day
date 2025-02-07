@@ -10,11 +10,12 @@ const nextConfig = {
   },
   webpack: (config, { isServer }) => {
     // Ignore WebSocket warnings
-    config.ignoreWarnings = [
-      { module: /node_modules\/ws\/lib\/buffer-util\.js/ },
-      { module: /node_modules\/@supabase\/realtime-js/ },
-    ];
-
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        ws: false,
+      };
+    }
     return config;
   },
 }

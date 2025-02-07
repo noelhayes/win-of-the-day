@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import NewPostForm from '../../components/NewPostForm';
-import WinFeed from '../../components/WinFeed';
-import { createClient } from '../../utils/supabase/client';
+import NewPostForm from '../../../components/NewPostForm';
+import WinFeed from '../../../components/WinFeed';
+import { createClient } from '../../../utils/supabase/client';
 
 export default function FeedPage() {
   const [user, setUser] = useState(null);

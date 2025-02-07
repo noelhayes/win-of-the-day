@@ -1,1 +1,0 @@
-Directory to store all Supabase related sql models, policies and eventual any migration scripts.

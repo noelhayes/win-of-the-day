@@ -21,18 +21,51 @@ export default function WinFeed({ currentUser }) {
     try {
       console.log('Loading posts...');
       
+      // First get all posts with their related data
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
-          *,
-          profiles!posts_user_id_fkey(id, name, profile_image)
+          id,
+          content,
+          is_private,
+          created_at,
+          updated_at,
+          user_id,
+          categories (
+            id,
+            name,
+            color,
+            icon
+          )
         `)
         .order('created_at', { ascending: false });
 
       if (postsError) throw postsError;
 
-      console.log('Posts loaded:', postsData);
-      setPosts(postsData || []);
+      // Get profiles for all user_ids
+      const userIds = [...new Set(postsData.map(post => post.user_id))];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, name, profile_image')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Create a map of profiles for quick lookup
+      const profilesMap = new Map(profilesData.map(profile => [profile.id, profile]));
+
+      // Transform the data to include profile information
+      const transformedPosts = postsData.map(post => ({
+        ...post,
+        profile: profilesMap.get(post.user_id) || {
+          id: post.user_id,
+          name: 'Anonymous',
+          profile_image: null
+        }
+      }));
+
+      console.log('Posts loaded:', transformedPosts);
+      setPosts(transformedPosts);
     } catch (error) {
       console.error('Error loading posts:', error);
       setError(error.message);
@@ -51,105 +84,78 @@ export default function WinFeed({ currentUser }) {
         {
           event: '*',
           schema: 'public',
-          table: 'posts',
+          table: 'posts'
         },
-        async (payload) => {
-          console.log('Real-time update received:', payload);
-
-          if (payload.eventType === 'INSERT') {
-            // Fetch the complete post data including profile
-            const { data: newPost, error } = await supabase
-              .from('posts')
-              .select(`*, profiles!posts_user_id_fkey(id, name, profile_image)`)
-              .eq('id', payload.new.id)
-              .single();
-
-            if (error) {
-              console.error('Error fetching new post:', error);
-              return;
-            }
-
-            console.log('New post data:', newPost);
-            setPosts(currentPosts => [newPost, ...currentPosts]);
-          } else if (payload.eventType === 'DELETE') {
-            setPosts(currentPosts => 
-              currentPosts.filter(post => post.id !== payload.old.id)
-            );
-          } else if (payload.eventType === 'UPDATE') {
-            const { data: updatedPost, error } = await supabase
-              .from('posts')
-              .select(`*, profiles!posts_user_id_fkey(id, name, profile_image)`)
-              .eq('id', payload.new.id)
-              .single();
-
-            if (error) {
-              console.error('Error fetching updated post:', error);
-              return;
-            }
-
-            setPosts(currentPosts =>
-              currentPosts.map(post =>
-                post.id === updatedPost.id ? updatedPost : post
-              )
-            );
-          }
+        (payload) => {
+          console.log('Change received!', payload);
+          loadPosts(); // Reload all posts when any change occurs
         }
       )
-      .subscribe((status) => {
-        console.log('Subscription status:', status);
-      });
+      .subscribe();
 
-    // Cleanup subscription on unmount
     return () => {
-      console.log('Cleaning up subscription');
       supabase.removeChannel(postsChannel);
     };
   }, []);
 
-  return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-surface-900 mb-2">
-          Welcome to your feed, {currentUser?.displayName || 'Friend'}!
-        </h1>
-        <p className="text-surface-500">
-          Share your daily wins and celebrate with others.
-        </p>
+  if (loading) {
+    return (
+      <div className="animate-pulse space-y-4">
+        {[...Array(3)].map((_, i) => (
+          <div key={i} className="bg-white rounded-xl shadow-soft p-5">
+            <div className="flex space-x-4">
+              <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+              <div className="flex-1 space-y-4 py-1">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
+    );
+  }
 
-      <NewPostForm onPostCreated={handleNewPost} />
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-red-800">Error loading posts: {error}</h3>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <NewPostForm onPostCreated={handleNewPost} currentUser={currentUser} />
       
-      {loading ? (
-        <div className="flex justify-center py-8">
-          <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : error ? (
-        <div className="bg-red-50 rounded-xl p-4 border border-red-100">
-          <p className="text-red-600">Error loading posts: {error}</p>
-          <button
-            onClick={loadPosts}
-            className="mt-3 text-sm font-medium text-red-600 hover:text-red-500"
-          >
-            Try again
-          </button>
-        </div>
-      ) : posts.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-surface-400 text-lg">No wins shared yet. Be the first!</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {posts.map((post) => (
-            <Post
-              key={post.id}
-              post={post}
-              profile={post.profiles}
-              user={post.user}
-              currentUser={currentUser}
-            />
-          ))}
-        </div>
-      )}
+      <div className="space-y-4">
+        {posts.map(post => (
+          <Post 
+            key={post.id} 
+            post={post}
+            profile={post.profile}
+            currentUser={currentUser}
+          />
+        ))}
+        
+        {posts.length === 0 && !loading && (
+          <div className="text-center py-8">
+            <p className="text-gray-500">No posts yet. Be the first to share a win!</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

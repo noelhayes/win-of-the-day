@@ -19,39 +19,37 @@ export default function ProductivityDashboard({ userId }) {
 
   const loadStats = async () => {
     try {
-      // Get total wins
-      const { count: totalWins } = await supabase
+      // Get total wins and their categories
+      const { data: posts, error } = await supabase
         .from('posts')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', userId);
-
-      // Get wins by category
-      const { data: categorizedWins } = await supabase
-        .from('post_categories')
         .select(`
-          category_id,
-          win_categories (
+          created_at,
+          categories (
+            id,
             name,
             color,
             icon
           )
         `)
-        .eq('posts.user_id', userId);
-
-      // Calculate streaks
-      const { data: posts } = await supabase
-        .from('posts')
-        .select('created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
+      if (error) throw error;
+
+      // Calculate total wins
+      const totalWins = posts?.length || 0;
+
+      // Calculate streaks
       const streaks = calculateStreaks(posts?.map(p => new Date(p.created_at)) || []);
 
+      // Process category stats
+      const categoryStats = processCategoryStats(posts || []);
+
       setStats({
-        totalWins: totalWins || 0,
+        totalWins,
         currentStreak: streaks.current,
         longestStreak: streaks.longest,
-        categories: processCategoryStats(categorizedWins || [])
+        categories: categoryStats
       });
     } catch (error) {
       console.error('Error loading stats:', error);
@@ -117,83 +115,85 @@ export default function ProductivityDashboard({ userId }) {
     };
   };
 
-  const processCategoryStats = (categorizedWins) => {
+  const processCategoryStats = (posts) => {
     const categoryMap = new Map();
 
-    categorizedWins.forEach(win => {
-      const category = win.win_categories;
-      if (!category) return;
-
-      if (!categoryMap.has(category.name)) {
-        categoryMap.set(category.name, {
-          name: category.name,
-          color: category.color,
-          icon: category.icon,
-          count: 0
-        });
+    posts.forEach(post => {
+      if (post.categories) {
+        const category = post.categories;
+        if (!categoryMap.has(category.id)) {
+          categoryMap.set(category.id, {
+            id: category.id,
+            name: category.name,
+            color: category.color,
+            icon: category.icon,
+            count: 1
+          });
+        } else {
+          categoryMap.get(category.id).count++;
+        }
       }
-
-      categoryMap.get(category.name).count++;
     });
 
     return Array.from(categoryMap.values())
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4); // Only show top 4 categories
+      .sort((a, b) => b.count - a.count);
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center py-8">
-        <div className="w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+      <div className="bg-white rounded-xl shadow-soft p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-xl shadow-soft p-6">
-      <h2 className="text-xl font-bold text-surface-900 mb-6">Your Progress</h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-surface-50 rounded-lg p-4">
-          <div className="text-surface-500 text-sm mb-1">Total Wins</div>
-          <div className="text-2xl font-bold text-surface-900">{stats.totalWins}</div>
+      <h2 className="text-xl font-bold text-gray-900 mb-6">Progress Dashboard</h2>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Total Wins */}
+        <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl p-6 text-white">
+          <h3 className="text-lg font-medium opacity-90">Total Wins</h3>
+          <p className="text-3xl font-bold mt-2">{stats.totalWins}</p>
         </div>
 
-        <div className="bg-surface-50 rounded-lg p-4">
-          <div className="text-surface-500 text-sm mb-1">Current Streak</div>
-          <div className="text-2xl font-bold text-surface-900">
-            {stats.currentStreak} {stats.currentStreak === 1 ? 'day' : 'days'}
-          </div>
+        {/* Current Streak */}
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white">
+          <h3 className="text-lg font-medium opacity-90">Current Streak</h3>
+          <p className="text-3xl font-bold mt-2">{stats.currentStreak} days</p>
         </div>
 
-        <div className="bg-surface-50 rounded-lg p-4">
-          <div className="text-surface-500 text-sm mb-1">Longest Streak</div>
-          <div className="text-2xl font-bold text-surface-900">
-            {stats.longestStreak} {stats.longestStreak === 1 ? 'day' : 'days'}
-          </div>
+        {/* Longest Streak */}
+        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
+          <h3 className="text-lg font-medium opacity-90">Longest Streak</h3>
+          <p className="text-3xl font-bold mt-2">{stats.longestStreak} days</p>
         </div>
       </div>
 
+      {/* Category Stats */}
       {stats.categories.length > 0 && (
-        <div>
-          <h3 className="text-lg font-semibold text-surface-900 mb-4">Top Categories</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="mt-8">
+          <h3 className="text-lg font-bold text-gray-900 mb-4">Wins by Category</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {stats.categories.map(category => (
-              <div
-                key={category.name}
-                className="flex flex-col items-center p-3 rounded-lg"
+              <div 
+                key={category.id}
+                className="flex items-center p-4 rounded-lg"
                 style={{ backgroundColor: `${category.color}15` }}
               >
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center mb-2"
-                  style={{ backgroundColor: category.color }}
-                >
-                  <span className="text-white text-sm">
-                    {category.icon}
-                  </span>
+                <span className="text-2xl mr-3">{category.icon}</span>
+                <div>
+                  <h4 className="font-medium" style={{ color: category.color }}>{category.name}</h4>
+                  <p className="text-sm text-gray-600">{category.count} wins</p>
                 </div>
-                <div className="text-sm font-medium text-surface-900">{category.name}</div>
-                <div className="text-sm text-surface-500">{category.count}</div>
               </div>
             ))}
           </div>

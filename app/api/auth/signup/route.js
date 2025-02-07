@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 
 export async function POST(request) {
   try {
@@ -26,17 +25,13 @@ export async function POST(request) {
 
     const { email, password, name } = await request.json();
 
-    // Hash the password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Create the user in Supabase Auth
+    // Create the user in Supabase Auth with metadata
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
-          name,
+          full_name: name || email.split('@')[0], // This will trigger our database trigger
         },
       },
     });
@@ -48,31 +43,13 @@ export async function POST(request) {
       );
     }
 
-    // Create the user profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert([
-        {
-          id: authData.user.id,
-          name,
-          email,
-          password_hash: hashedPassword,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-
-    if (profileError) {
-      return NextResponse.json(
-        { error: profileError.message },
-        { status: 400 }
-      );
-    }
-
+    // The profile will be created automatically by our database trigger
     return NextResponse.json(
       { message: 'User created successfully' },
       { status: 201 }
     );
   } catch (error) {
+    console.error('Signup error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

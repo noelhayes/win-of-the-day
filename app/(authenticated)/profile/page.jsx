@@ -1,41 +1,60 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '../../utils/supabase/client';
-import ProfileHeader from '../../components/ProfileHeader';
-import GoalsList from '../../components/GoalsList';
-import FriendsList from '../../components/FriendsList';
-import ProductivityDashboard from '../../components/ProductivityDashboard';
+import { createClient } from '../../../utils/supabase/client';
+import ProfileHeader from '../../../components/ProfileHeader';
+import GoalsList from '../../../components/GoalsList';
+import FriendsList from '../../../components/FriendsList';
+import ProductivityDashboard from '../../../components/ProductivityDashboard';
+import { useRouter } from 'next/navigation';
 
 export default function ProfilePage() {
+  const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAddingGoal, setIsAddingGoal] = useState(false);
+  const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
-    loadProfile();
-  }, []);
+    async function loadProfile() {
+      try {
+        const { data: { user: userData }, error: userError } = await supabase.auth.getUser();
+        
+        if (!userData || userError) {
+          router.push('/');
+          return;
+        }
 
-  const loadProfile = async () => {
-    try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
+        setUser(userData);
 
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userData.id)
+          .single();
 
-      if (profileError) throw profileError;
-      setProfile(profile);
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
-      setLoading(false);
+        if (profileError) throw profileError;
+        setProfile(profileData);
+      } catch (error) {
+        console.error('Error loading profile:', error);
+      } finally {
+        setLoading(false);
+      }
     }
-  };
+
+    loadProfile();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        router.push('/');
+      }
+    });
+
+    return () => {
+      subscription?.unsubscribe();
+    };
+  }, [router]);
 
   if (loading) {
     return (
@@ -45,7 +64,7 @@ export default function ProfilePage() {
     );
   }
 
-  if (!profile) {
+  if (!user || !profile) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
