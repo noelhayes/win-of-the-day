@@ -6,7 +6,7 @@ create extension if not exists pgcrypto;
 create table if not exists public.profiles (
     id uuid references auth.users(id) on delete cascade primary key,
     name text,
-    email text,
+    email text unique,
     bio text check (char_length(bio) <= 1000),
     profile_image text,
     created_at timestamp with time zone default timezone('utc', now()) not null,
@@ -64,3 +64,6 @@ create policy "Users can update own profile"
 create policy "Users can insert own profile"
     on profiles for insert
     with check (auth.uid() = id);
+
+-- Create an index on email for faster searches
+create index if not exists profiles_email_idx on profiles (email);
