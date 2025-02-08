@@ -15,6 +15,7 @@ export default function NewPostForm({ onPostCreated }) {
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(false);
   const textareaRef = useRef(null);
   const router = useRouter();
   const supabase = createClient();
@@ -79,7 +80,8 @@ export default function NewPostForm({ onPostCreated }) {
           {
             content: content.trim(),
             user_id: user.id,
-            category_id: selectedCategory
+            category_id: selectedCategory,
+            is_private: isPrivate
           }
         ])
         .select(`
@@ -209,6 +211,28 @@ export default function NewPostForm({ onPostCreated }) {
 
             {/* Action Buttons */}
             <div className="flex items-center space-x-3">
+              {/* Privacy toggle */}
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={isPrivate}
+                    onChange={(e) => setIsPrivate(e.target.checked)}
+                    disabled={isSubmitting}
+                    className="sr-only"
+                  />
+                  <div className="w-10 h-5 rounded-full transition-colors duration-200 ease-in-out flex items-center px-0.5" 
+                    style={{ 
+                      backgroundColor: isPrivate ? 'rgb(37, 99, 235)' : 'rgb(229, 231, 235)'
+                    }}>
+                    <div className={`w-4 h-4 rounded-full bg-white shadow transform transition-transform duration-200 ease-in-out ${
+                      isPrivate ? 'translate-x-5' : 'translate-x-0'
+                    }`} />
+                  </div>
+                </div>
+                <span className="text-sm text-gray-600">Private</span>
+              </label>
+
               <button
                 type="button"
                 disabled={isSubmitting}

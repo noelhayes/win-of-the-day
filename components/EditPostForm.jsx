@@ -124,12 +124,13 @@ export default function EditPostForm({ post, onSave, onCancel }) {
               disabled={isLoading}
               className="sr-only"
             />
-            <div className={`w-9 h-5 rounded-full transition-colors duration-200 ease-in-out ${
-              isPrivate ? 'bg-primary-600' : 'bg-gray-200'
-            }`}>
-              <div className={`w-3.5 h-3.5 rounded-full bg-white transform transition-transform duration-200 ease-in-out ${
-                isPrivate ? 'translate-x-4' : 'translate-x-1'
-              } mt-0.75`} style={{ marginTop: '3px' }} />
+            <div className="w-10 h-5 rounded-full transition-colors duration-200 ease-in-out flex items-center px-0.5" 
+              style={{ 
+                backgroundColor: isPrivate ? 'rgb(37, 99, 235)' : 'rgb(229, 231, 235)'
+              }}>
+              <div className={`w-4 h-4 rounded-full bg-white shadow transform transition-transform duration-200 ease-in-out ${
+                isPrivate ? 'translate-x-5' : 'translate-x-0'
+              }`} />
             </div>
           </div>
           <span className="text-sm text-gray-600">Private</span>
