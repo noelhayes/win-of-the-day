@@ -6,7 +6,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
+import { Pencil } from 'lucide-react';
 import ComingSoonToast from './ui/ComingSoonToast';
+import Modal from './ui/Modal';
+import EditPostForm from './EditPostForm';
 
 export default function Post({ post, profile, currentUser, onUpdate }) {
   const [isLiked, setIsLiked] = useState(false);
@@ -14,6 +17,7 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
   const [isLoading, setIsLoading] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showEditModal, setShowEditModal] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -95,12 +99,19 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
     setShowToast(true);
   };
 
+  const handleEditSave = (updatedPost) => {
+    setShowEditModal(false);
+    if (onUpdate) onUpdate();
+  };
+
   // If profile is not provided, use the user_id from the post
   const userId = profile?.id || post.user_id;
   const userName = profile?.name || 'Anonymous';
   const profileImage = profile?.profile_image;
   const timeAgo = formatDistanceToNow(new Date(post.created_at), { addSuffix: true });
   const category = post.category;
+  const isOwner = currentUser?.id === post.user_id;
+  const wasEdited = post.updated_at && post.updated_at !== post.created_at;
 
   return (
     <>
@@ -114,29 +125,44 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
         <div className="p-5">
           {/* Category and timestamp header */}
           <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-medium text-gray-600">
-              Posted {timeAgo}
+            <div className="flex items-center space-x-2">
+              <span className="text-sm font-medium text-gray-600">
+                Posted {timeAgo}
+                {wasEdited && (
+                  <span className="text-xs text-gray-500 ml-1">(edited)</span>
+                )}
+              </span>
               {post.is_private && (
-                <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
                   <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                   Private
                 </span>
               )}
-            </span>
-            {category && (
-              <div 
-                className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-sm font-medium"
-                style={{
-                  backgroundColor: `${category.color}15`,
-                  color: category.color
-                }}
-              >
-                <span className="text-base">{category.icon}</span>
-                <span>{category.name}</span>
-              </div>
-            )}
+            </div>
+            <div className="flex items-center space-x-3">
+              {isOwner && (
+                <button
+                  onClick={() => setShowEditModal(true)}
+                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+              )}
+              {category && (
+                <div 
+                  className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-sm font-medium"
+                  style={{
+                    backgroundColor: `${category.color}15`,
+                    color: category.color
+                  }}
+                >
+                  <span className="text-base">{category.icon}</span>
+                  <span>{category.name}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* User info and content */}
@@ -249,6 +275,21 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
           </div>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Post"
+      >
+        <EditPostForm
+          post={post}
+          onSave={handleEditSave}
+          onCancel={() => setShowEditModal(false)}
+        />
+      </Modal>
+
+      {/* Toast */}
       <ComingSoonToast 
         isVisible={showToast} 
         onClose={() => setShowToast(false)} 

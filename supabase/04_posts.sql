@@ -84,7 +84,19 @@ create policy "Users can create posts"
 create policy "Users can update own posts"
     on posts for update
     using (auth.uid() = user_id)
-    with check (auth.uid() = user_id);
+    with check (
+        auth.uid() = user_id
+        and (
+            -- Allow updating content, category, privacy, and updated_at
+            (content is not null and char_length(content) <= 1000)
+            and (category_id is null or category_id in (select id from public.categories))
+            and (is_private is not null)
+            and (updated_at is not null)
+            -- Prevent updating user_id and created_at
+            and user_id = (select user_id from public.posts where id = id)
+            and created_at = (select created_at from public.posts where id = id)
+        )
+    );
 
 create policy "Users can delete own posts"
     on posts for delete
@@ -133,3 +145,22 @@ create policy "Users can delete images from own posts"
             and auth.uid() = user_id
         )
     );
+
+-- Create function to update updated_at timestamp
+create or replace function public.handle_updated_at()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+    new.updated_at = now();
+    return new;
+end;
+$$;
+
+-- Create trigger to automatically update updated_at
+drop trigger if exists on_post_update on posts;
+create trigger on_post_update
+    before update on posts
+    for each row
+    execute function handle_updated_at();
