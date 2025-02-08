@@ -16,10 +16,10 @@ This document outlines the testing strategy and practices for the Win of the Day
 npm test
 
 # Run tests in watch mode (recommended during development)
-npm test:watch
+npm run test:watch
 
 # Generate test coverage report
-npm test:coverage
+npm run test:coverage
 ```
 
 ## Test Structure
@@ -111,7 +111,7 @@ Create a `.env.test` file for test-specific environment variables.
 2. Use `console.log()` within tests (removed in production)
 3. Run specific tests using:
    ```bash
-   npm test -- -t "test name"
+   npm run test -- -t "test name"
    ```
 
 ## Adding New Tests
