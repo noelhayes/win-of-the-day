@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",
@@ -23,9 +26,14 @@
     "utf-8-validate": "^6.0.5"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.4.2",
+    "@testing-library/react": "^14.2.1",
+    "@testing-library/user-event": "^14.5.2",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.57.0",
     "eslint-config-next": "14.0.4",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "postcss": "^8.4.32",
     "postcss-import": "^16.1.0",
     "tailwindcss": "^3.3.5"
