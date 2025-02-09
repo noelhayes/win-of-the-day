@@ -18,19 +18,32 @@ export async function GET(request) {
     headers: Object.fromEntries(request.headers),
     env: process.env.NODE_ENV,
     isDev: process.env.NODE_ENV === 'development',
-    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    VERCEL_URL: process.env.VERCEL_URL
   });
 
   if (code) {
     const cookieStore = cookies();
-    const baseUrl = getSiteUrl();
+    
+    // For preview deployments, use the request's origin
+    // This ensures we stay on the same preview URL
+    let baseUrl;
+    if (process.env.VERCEL_URL && requestUrl.origin.includes(process.env.VERCEL_URL)) {
+      baseUrl = requestUrl.origin;
+      logger.info('Using request origin for preview deployment', { baseUrl });
+    } else {
+      baseUrl = getSiteUrl();
+      logger.info('Using getSiteUrl for base URL', { baseUrl });
+    }
 
-    logger.info('Using base URL for redirect', { 
+    logger.info('Final redirect configuration', { 
       baseUrl, 
       env: process.env.NODE_ENV,
       isDev: process.env.NODE_ENV === 'development',
       NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
-      requestOrigin: requestUrl.origin
+      VERCEL_URL: process.env.VERCEL_URL,
+      requestOrigin: requestUrl.origin,
+      redirectUrl: new URL('/feed', baseUrl).toString()
     });
 
     const response = NextResponse.redirect(new URL('/feed', baseUrl));
