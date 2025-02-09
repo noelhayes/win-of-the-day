@@ -116,14 +116,16 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
   return (
     <>
       <div 
-        className="bg-white rounded-xl shadow-soft overflow-hidden relative"
+        className="bg-white rounded-xl overflow-hidden relative border-l-4 transition transform duration-300 hover:shadow-xl hover:-translate-y-0.5"
         style={{
-          borderLeft: category ? `4px solid ${category.color}` : undefined,
-          boxShadow: category ? `0 4px 6px -1px ${category.color}15, 0 2px 4px -2px ${category.color}10` : undefined
+          borderColor: category ? category.color : 'transparent',
+          boxShadow: category
+            ? `0 4px 6px -1px ${category.color}15, 0 2px 4px -2px ${category.color}10`
+            : undefined
         }}
       >
         <div className="p-5">
-          {/* Category and timestamp header */}
+          {/* Header: Category and timestamp */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-600">
@@ -145,7 +147,7 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
               {isOwner && (
                 <button
                   onClick={() => setShowEditModal(true)}
-                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
+                  className="p-1 rounded-lg transition-colors duration-200 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
@@ -168,7 +170,7 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
           {/* User info and content */}
           <div className="flex items-start space-x-4">
             <Link href={`/profile/${userId}`} className="flex-shrink-0">
-              <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-lg font-medium text-white hover:opacity-90 transition-opacity duration-200 overflow-hidden">
+              <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-lg font-medium text-white overflow-hidden hover:ring-2 hover:ring-offset-2 hover:ring-primary-500 transition-all duration-200">
                 {profileImage ? (
                   profileImage.startsWith('https://') ? (
                     <Image
@@ -194,22 +196,24 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
             <div className="flex-1 min-w-0">
               <Link 
                 href={`/profile/${userId}`}
-                className="font-medium text-gray-900 hover:text-primary-600 truncate"
+                className="font-medium text-gray-900 hover:text-primary-600 truncate transition-colors duration-200"
               >
                 {userName}
               </Link>
 
-              <p className="mt-2 text-gray-800 whitespace-pre-wrap break-words">{post.content}</p>
+              <p className="mt-2 text-gray-800 whitespace-pre-wrap break-words">
+                {post.content}
+              </p>
 
               <div className="mt-4 flex items-center space-x-4">
                 <button
                   onClick={handleLike}
                   disabled={isLoading}
-                  className={`flex items-center space-x-1 text-sm font-medium transition-colors duration-200 ${
+                  className={`flex items-center space-x-1 px-2 py-1 rounded transition-colors duration-200 ${
                     isLiked
                       ? 'text-red-500 hover:text-red-600'
                       : 'text-gray-500 hover:text-gray-600'
-                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
                 >
                   <svg
                     className={`w-5 h-5 ${isLiked ? 'fill-current' : 'stroke-current fill-none'}`}
@@ -233,7 +237,7 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
 
                 <button 
                   onClick={() => showComingSoon('Comments')}
-                  className="flex items-center space-x-1 text-sm font-medium text-gray-500 hover:text-gray-600 transition-colors duration-200"
+                  className="flex items-center space-x-1 px-2 py-1 rounded text-sm font-medium text-gray-500 hover:text-gray-600 hover:bg-gray-50 transition-colors duration-200"
                 >
                   <svg
                     className="w-5 h-5 stroke-current"
@@ -253,7 +257,7 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
 
                 <button 
                   onClick={() => showComingSoon('Share')}
-                  className="flex items-center space-x-1 text-sm font-medium text-gray-500 hover:text-gray-600 transition-colors duration-200"
+                  className="flex items-center space-x-1 px-2 py-1 rounded text-sm font-medium text-gray-500 hover:text-gray-600 hover:bg-gray-50 transition-colors duration-200"
                 >
                   <svg
                     className="w-5 h-5 stroke-current"

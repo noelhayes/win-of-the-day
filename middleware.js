@@ -80,10 +80,11 @@ export async function middleware(req) {
   // Update the session
   const response = await updateSession(req);
   
-  // Add security headers
+  // Add security headers and pathname
   Object.entries(securityHeaders).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
+  response.headers.set('x-pathname', req.nextUrl.pathname);
 
   return response;
 }

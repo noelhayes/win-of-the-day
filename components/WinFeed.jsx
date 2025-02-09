@@ -15,6 +15,27 @@ export default function WinFeed({ currentUser }) {
   useEffect(() => {
     if (currentUser) {
       loadPosts();
+      // Set up real-time subscription for likes
+      const likesSubscription = supabase
+        .channel('likes-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'likes',
+          },
+          (payload) => {
+            console.log('Likes change received:', payload);
+            // Refresh posts when likes change
+            loadPosts();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        likesSubscription.unsubscribe();
+      };
     }
   }, [currentUser]);
 
@@ -34,7 +55,7 @@ export default function WinFeed({ currentUser }) {
       // Get array of followed user IDs plus the current user's ID
       const userIds = [currentUser.id, ...(followData?.map(f => f.following_id) || [])];
 
-      // Get posts with profile and category information
+      // Get posts with profile, category, and likes count
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select(`
@@ -44,7 +65,8 @@ export default function WinFeed({ currentUser }) {
             name,
             color,
             icon
-          )
+          ),
+          likes:likes(count)
         `)
         .in('user_id', userIds)
         .order('created_at', { ascending: false });
@@ -62,13 +84,14 @@ export default function WinFeed({ currentUser }) {
       // Create a map of profiles for quick lookup
       const profilesMap = new Map(profilesData.map(profile => [profile.id, profile]));
 
-      // Transform posts to include profile and category
+      // Transform posts to include profile, category, and likes count
       const postsWithData = postsData.map(post => ({
         ...post,
-        profiles: profilesMap.get(post.user_id)
+        profiles: profilesMap.get(post.user_id),
+        likes_count: post.likes?.[0]?.count || 0
       }));
 
-      console.log('Posts with categories:', postsWithData);
+      console.log('Posts with data:', postsWithData);
       setPosts(postsWithData);
 
     } catch (error) {
@@ -99,34 +122,32 @@ export default function WinFeed({ currentUser }) {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center p-8">
-        <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
-      </div>
-    );
-  }
-
-  if (!posts.length) {
-    return (
-      <div className="text-center p-8">
-        <p className="text-gray-500">No posts yet.</p>
-        <p className="text-sm text-gray-400 mt-2">
-          Follow some users or create your first post!
-        </p>
+        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <NewPostForm onPostCreated={handleNewPost} currentUser={currentUser} />
-      {posts.map(post => (
-        <Post 
-          key={post.id} 
-          post={post}
-          profile={post.profiles}
-          currentUser={currentUser}
-          onUpdate={handlePostUpdate}
-        />
-      ))}
+    <div className="space-y-6">
+      <NewPostForm currentUser={currentUser} onNewPost={handleNewPost} />
+      
+      {posts.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-500">No posts yet. Follow some users or create your first post!</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {posts.map((post) => (
+            <Post
+              key={post.id}
+              post={post}
+              profile={post.profiles}
+              currentUser={currentUser}
+              onUpdate={handlePostUpdate}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

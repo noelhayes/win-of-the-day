@@ -24,92 +24,46 @@ class AuthError extends Error {
  * @throws {AuthError} If profile creation fails
  */
 export async function ensureProfile(user) {
-  if (!user?.id) {
-    throw new AuthError('Invalid user object provided', 'INVALID_USER');
-  }
-
   try {
-    console.log('ensureProfile called with user:', {
-      id: user.id,
-      email: user.email,
-      metadata: user.user_metadata,
-      identities: user.identities
+    const response = await fetch('/api/auth/ensure-profile', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
 
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          get(name) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name, value, options) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name, options) {
-            cookieStore.delete({ name, ...options });
-          },
-        },
-      }
-    );
-
-    // Check if profile exists
-    const { data: existingProfile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
-    console.log('Middleware: Profile check result:', {
-      existingProfile,
-      profileCheckError: profileError
-    });
-
-    if (!existingProfile && profileError?.code === 'PGRST116') {
-      console.log('Middleware: Profile not found, creating new profile...');
-
-      // Get the display name from user metadata
-      const displayName = user.user_metadata?.full_name || 
-                         user.user_metadata?.name || 
-                         user.email?.split('@')[0] || 
-                         'Anonymous User';
-
-      // Create new profile
-      const { error: insertError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            id: user.id,
-            name: displayName,
-            email: user.email,
-            profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture
-          }
-        ]);
-
-      if (insertError) {
-        console.error('Error creating profile:', insertError);
-        throw new AuthError('Failed to create user profile', 'PROFILE_CREATION_FAILED', insertError);
-      }
-
-      return {
-        id: user.id,
-        name: displayName,
-        email: user.email,
-        profile_image: user.user_metadata?.avatar_url || user.user_metadata?.picture
-      };
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to ensure profile');
     }
 
-    if (profileError && profileError.code !== 'PGRST116') {
-      throw profileError;
-    }
-
-    return existingProfile;
+    return await response.json();
   } catch (error) {
-    console.error('Unexpected error in ensureProfile:', error);
-    throw new AuthError('Unexpected error while managing user profile', 'UNEXPECTED_ERROR', error);
+    console.error('Failed to ensure profile:', error);
+    throw error;
   }
+}
+
+export function getSupabaseCookieClient() {
+  const cookieStore = cookies();
+  
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get(name) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name, value, options) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name, options) {
+          cookieStore.delete({ name, ...options });
+        },
+      },
+    }
+  );
 }
 
 /**
@@ -125,24 +79,7 @@ export async function updateProfile(userId, updates) {
   }
 
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          get(name) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name, value, options) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name, options) {
-            cookieStore.delete({ name, ...options });
-          },
-        },
-      }
-    );
+    const supabase = getSupabaseCookieClient();
 
     const { data, error } = await supabase
       .from('profiles')
@@ -170,24 +107,7 @@ export async function getProfile(userId) {
   }
 
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-      {
-        cookies: {
-          get(name) {
-            return cookieStore.get(name)?.value;
-          },
-          set(name, value, options) {
-            cookieStore.set({ name, value, ...options });
-          },
-          remove(name, options) {
-            cookieStore.delete({ name, ...options });
-          },
-        },
-      }
-    );
+    const supabase = getSupabaseCookieClient();
 
     const { data, error } = await supabase
       .from('profiles')

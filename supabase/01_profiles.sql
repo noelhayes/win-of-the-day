@@ -13,6 +13,18 @@ create table if not exists public.profiles (
     updated_at timestamp with time zone default timezone('utc', now()) not null
 );
 
+-- Add username column to profiles table
+alter table public.profiles
+  add column username text unique,
+  add column username_updated_at timestamp with time zone,
+  add constraint username_format check (
+    username ~ '^[a-zA-Z0-9_]{3,20}$' and
+    username !~ '^[0-9_]' -- Cannot start with number or underscore
+  );
+
+-- Create index for username lookups
+create index if not exists profiles_username_idx on profiles (username);
+
 -- Create function to handle new user creation
 create or replace function public.handle_new_user()
 returns trigger
@@ -21,6 +33,7 @@ security definer set search_path = public
 as $$
 declare
     display_name text;
+    temp_username text;
 begin
     if new.raw_user_meta_data->>'full_name' is not null then
         display_name := new.raw_user_meta_data->>'full_name';
@@ -28,11 +41,20 @@ begin
         display_name := split_part(new.email, '@', 1);
     end if;
 
-    insert into public.profiles (id, name, email)
+    -- Generate initial username from email
+    temp_username := split_part(new.email, '@', 1);
+
+    -- Ensure uniqueness by appending random string if needed
+    while exists (select 1 from profiles where username = temp_username) loop
+        temp_username := temp_username || substring(md5(random()::text) from 1 for 4);
+    end loop;
+
+    insert into public.profiles (id, name, email, username)
     values (
         new.id,
         display_name,
-        new.email
+        new.email,
+        temp_username
     );
     return new;
 end;
