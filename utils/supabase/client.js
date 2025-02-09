@@ -4,6 +4,7 @@
  */
 
 import { createBrowserClient } from '@supabase/ssr'
+import { getSiteUrl } from '../site-url';
 
 let supabaseInstance = null;
 
@@ -14,16 +15,14 @@ let supabaseInstance = null;
 export function createClient() {
   if (supabaseInstance) return supabaseInstance;
 
-  // Force localhost in development, regardless of NEXT_PUBLIC_SITE_URL
-  const siteUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'
-    : (process.env.NEXT_PUBLIC_SITE_URL || window?.location?.origin);
+  const siteUrl = getSiteUrl();
 
   console.log('Creating Supabase browser client with config:', {
     env: process.env.NODE_ENV,
     isDev: process.env.NODE_ENV === 'development',
     siteUrl,
-    redirectTo: `${process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : siteUrl}/api/auth/callback`
+    vercelUrl: process.env.VERCEL_URL,
+    redirectTo: `${siteUrl}/api/auth/callback`
   });
 
   supabaseInstance = createBrowserClient(
@@ -35,10 +34,8 @@ export function createClient() {
         persistSession: true,
         detectSessionInUrl: true,
         flowType: 'pkce',
-        // Force localhost in development for auth callback
-        redirectTo: `${process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : siteUrl}/api/auth/callback`,
-        // Add site URL to auth request to maintain development context
-        site_url: process.env.NODE_ENV === 'development' ? 'http://localhost:3000' : siteUrl
+        redirectTo: `${siteUrl}/api/auth/callback`,
+        site_url: siteUrl
       },
       realtime: {
         params: {
@@ -54,7 +51,7 @@ export function createClient() {
       event,
       userId: session?.user?.id,
       env: process.env.NODE_ENV,
-      isDev: process.env.NODE_ENV === 'development'
+      siteUrl
     });
   });
 

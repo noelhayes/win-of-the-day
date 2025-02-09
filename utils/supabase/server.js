@@ -1,13 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { middlewareLogger as logger } from '../logger';
-
-// Helper to get site URL, forcing localhost in development
-const getSiteUrl = () => {
-  return process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'
-    : process.env.NEXT_PUBLIC_SITE_URL;
-};
+import { getSiteUrl } from '../site-url';
 
 export async function createClient(cookieStore = null, response = null) {
   // If no cookieStore provided, use the default from next/headers
@@ -17,17 +11,21 @@ export async function createClient(cookieStore = null, response = null) {
 
   const siteUrl = getSiteUrl();
 
+  logger.info('Creating Supabase server client', {
+    env: process.env.NODE_ENV,
+    siteUrl,
+    vercelUrl: process.env.VERCEL_URL
+  });
+
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       auth: {
-        // Force localhost in development for auth
         flowType: 'pkce',
         autoRefreshToken: true,
         detectSessionInUrl: true,
         persistSession: true,
-        // Set site URL to ensure consistent redirects
         site_url: siteUrl
       },
       cookies: {
@@ -88,5 +86,5 @@ export async function createClient(cookieStore = null, response = null) {
         },
       },
     }
-  )
+  );
 }
