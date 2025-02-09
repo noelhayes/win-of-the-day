@@ -15,13 +15,14 @@ let supabaseInstance = null;
 export function createClient() {
   if (supabaseInstance) return supabaseInstance;
 
+  // Since this is client-side code, we can safely use window.location.origin as fallback
   const siteUrl = getSiteUrl();
 
   console.log('Creating Supabase browser client with config:', {
     env: process.env.NODE_ENV,
     isDev: process.env.NODE_ENV === 'development',
     siteUrl,
-    vercelUrl: process.env.VERCEL_URL,
+    origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
     redirectTo: `${siteUrl}/api/auth/callback`
   });
 
@@ -51,7 +52,8 @@ export function createClient() {
       event,
       userId: session?.user?.id,
       env: process.env.NODE_ENV,
-      siteUrl
+      siteUrl,
+      origin: window.location.origin
     });
   });
 
