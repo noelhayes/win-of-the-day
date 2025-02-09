@@ -38,6 +38,11 @@ export function createClient() {
         redirectTo: `${siteUrl}/api/auth/callback`,
         site_url: siteUrl
       },
+      global: {
+        headers: {
+          'x-site-url': siteUrl
+        }
+      },
       realtime: {
         params: {
           eventsPerSecond: 10

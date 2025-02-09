@@ -28,6 +28,11 @@ export async function createClient(cookieStore = null, response = null) {
         persistSession: true,
         site_url: siteUrl
       },
+      global: {
+        headers: {
+          'x-site-url': siteUrl
+        }
+      },
       cookies: {
         get(name) {
           const cookie = cookieStore.get(name)?.value;
