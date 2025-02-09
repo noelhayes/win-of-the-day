@@ -6,6 +6,10 @@
  * - Production deployment (dailywin.app)
  */
 export const getSiteUrl = () => {
+  console.log("NODE_ENV:", process.env.NODE_ENV);
+  console.log("VERCEL_URL:", process.env.VERCEL_URL);
+  console.log("NEXT_PUBLIC_SITE_URL:", process.env.NEXT_PUBLIC_SITE_URL);
+  
   // Always use localhost for development
   if (process.env.NODE_ENV === 'development') {
     return 'http://localhost:3000';
