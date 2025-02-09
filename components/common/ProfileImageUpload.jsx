@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
 import { Upload, X } from 'lucide-react';
 import Image from 'next/image';
 

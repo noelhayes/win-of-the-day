@@ -15,16 +15,6 @@ create table if not exists public.posts (
     foreign key (user_id) references auth.users(id) on delete cascade
 );
 
--- Create likes table
-create table if not exists public.likes (
-    id uuid default gen_random_uuid() primary key,
-    user_id uuid not null,
-    post_id uuid references public.posts(id) on delete cascade not null,
-    created_at timestamp with time zone default timezone('utc', now()) not null,
-    unique(user_id, post_id),
-    foreign key (user_id) references auth.users(id) on delete cascade
-);
-
 -- Create post_images table
 create table if not exists public.post_images (
     id uuid default uuid_generate_v4() primary key,

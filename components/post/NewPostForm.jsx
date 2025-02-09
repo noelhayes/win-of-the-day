@@ -2,10 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
 import { Loader2, Camera } from 'lucide-react';
 import { Transition } from '@headlessui/react';
-import ComingSoonToast from './ui/ComingSoonToast';
+import { ComingSoonToast } from '../ui';
 
 export default function NewPostForm({ onPostCreated }) {
   const [content, setContent] = useState('');

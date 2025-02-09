@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
 import { useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
 
@@ -17,25 +17,10 @@ export default function SearchBar() {
 
     setIsSearching(true);
     try {
-      // Search for user by exact email match
-      const { data: users, error } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .eq('email', searchTerm.trim())
-        .single();
-
-      if (error) {
-        console.error('Error searching for user:', error);
-        return;
-      }
-
-      if (users) {
-        // Navigate to the user's profile
-        router.push(`/profile/${users.id}`);
-        setSearchTerm('');
-      } else {
-        alert('No user found with that email address');
-      }
+      // Redirect to search results page with the search term
+      const encodedSearchTerm = encodeURIComponent(searchTerm.trim());
+      router.push(`/search?q=${encodedSearchTerm}`);
+      setSearchTerm('');
     } catch (error) {
       console.error('Error:', error);
     } finally {
@@ -50,7 +35,7 @@ export default function SearchBar() {
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search for friends (exact email)"
+          placeholder="Search by name or username"
           className="w-full pl-10 pr-4 py-2 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent placeholder-indigo-200/70 text-white text-sm transition-all duration-200"
         />
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

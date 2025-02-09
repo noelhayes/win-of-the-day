@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
 
 export default function GoalsList({ userId, isOwnProfile, isAdding, onAddingChange }) {
   const [goals, setGoals] = useState([]);

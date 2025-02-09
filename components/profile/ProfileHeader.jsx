@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '../utils/supabase/client';
-import ProfileImageUpload from './ProfileImageUpload';
+import { createClient } from '../../utils/supabase/client';
+import { ProfileImageUpload } from '../../components';
 
 export default function ProfileHeader({ profile, isOwnProfile }) {
   const [profileImage, setProfileImage] = useState(profile.profile_image);
@@ -39,7 +39,7 @@ export default function ProfileHeader({ profile, isOwnProfile }) {
 
         <div className="flex-1 text-center sm:text-left">
           <h1 className="text-2xl font-bold text-surface-900">{profile.name}</h1>
-          <p className="text-surface-500 mt-1">{profile.email}</p>
+          <p className="text-surface-500 mt-1">@{profile.username}</p>
           
           {isOwnProfile ? (
             <button className="mt-4 px-4 py-2 bg-surface-100 hover:bg-surface-200 text-surface-600 rounded-lg text-sm font-medium transition-colors duration-200">

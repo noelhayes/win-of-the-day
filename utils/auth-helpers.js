@@ -5,6 +5,8 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { createClient } from './supabase/server';
+import { authLogger as logger } from './logger';
 
 /**
  * Error class for auth-related errors
@@ -19,30 +21,13 @@ class AuthError extends Error {
 }
 
 /**
- * Creates or ensures a user profile exists
- * @param {User} user - The authenticated user object
- * @throws {AuthError} If profile creation fails
+ * Gets the base URL for the current environment
  */
-export async function ensureProfile(user) {
-  try {
-    const response = await fetch('/api/auth/ensure-profile', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Failed to ensure profile');
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to ensure profile:', error);
-    throw error;
-  }
-}
+const getBaseUrl = () => {
+  return process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : process.env.NEXT_PUBLIC_SITE_URL;
+};
 
 export function getSupabaseCookieClient() {
   const cookieStore = cookies();

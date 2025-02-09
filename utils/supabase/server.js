@@ -1,29 +1,89 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { middlewareLogger as logger } from '../logger';
 
-export async function createClient() {
-  const cookieStore = cookies()
+// Helper to get site URL, forcing localhost in development
+const getSiteUrl = () => {
+  return process.env.NODE_ENV === 'development'
+    ? 'http://localhost:3000'
+    : process.env.NEXT_PUBLIC_SITE_URL;
+};
+
+export async function createClient(cookieStore = null, response = null) {
+  // If no cookieStore provided, use the default from next/headers
+  if (!cookieStore) {
+    cookieStore = cookies();
+  }
+
+  const siteUrl = getSiteUrl();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      auth: {
+        // Force localhost in development for auth
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        persistSession: true,
+        // Set site URL to ensure consistent redirects
+        site_url: siteUrl
+      },
       cookies: {
         get(name) {
-          return cookieStore.get(name)?.value
+          const cookie = cookieStore.get(name)?.value;
+          logger.cookieOperation('get', name, { value: cookie ? 'present' : 'missing' });
+          return cookie;
         },
         set(name, value, options) {
           try {
-            cookieStore.set({ name, value, ...options })
+            const cookieOptions = {
+              ...options,
+              path: '/',
+              secure: process.env.NODE_ENV === 'production',
+            };
+
+            logger.cookieOperation('set', name, cookieOptions);
+
+            // If response is provided (middleware case), use response.cookies
+            if (response) {
+              response.cookies.set({
+                name,
+                value,
+                ...cookieOptions,
+              });
+            } else {
+              // Server component case
+              cookieStore.set({ name, value, ...cookieOptions });
+            }
           } catch (error) {
-            // Handle cookie errors in development
+            logger.error('Failed to set cookie', error, { cookieName: name });
           }
         },
         remove(name, options) {
           try {
-            cookieStore.delete({ name, ...options })
+            const cookieOptions = {
+              ...options,
+              path: '/',
+            };
+
+            logger.cookieOperation('remove', name, cookieOptions);
+
+            // If response is provided (middleware case), use response.cookies
+            if (response) {
+              response.cookies.set({
+                name,
+                value: '',
+                ...cookieOptions,
+                expires: new Date(0),
+              });
+            } else {
+              // Server component case
+              cookieStore.delete({ name, ...cookieOptions });
+            }
           } catch (error) {
-            // Handle cookie errors in development
+            logger.error('Failed to remove cookie', error, { cookieName: name });
           }
         },
       },

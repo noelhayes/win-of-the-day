@@ -1,44 +1,158 @@
-import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { createClient } from '../../../../utils/supabase/server';
+import { authLogger as logger } from '../../../../utils/logger';
+import { getSiteUrl } from '../../../../utils/site-url';
 
 export async function GET(request) {
-  const cookieStore = cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        get(name) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name, value, options) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name, options) {
-          cookieStore.delete({ name, ...options });
-        },
-      },
-    }
-  );
-
-  // Get the code from the URL
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
 
-  if (code) {
-    // Exchange the code for a session
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    
-    if (error) {
-      // If there's an error, redirect to the sign-in page
-      return NextResponse.redirect(new URL('/signin', request.url));
-    }
+  // Log all relevant information about the request
+  logger.info('Auth callback initiated', {
+    hasCode: !!code,
+    url: request.url,
+    origin: requestUrl.origin,
+    pathname: requestUrl.pathname,
+    searchParams: Object.fromEntries(requestUrl.searchParams),
+    headers: Object.fromEntries(request.headers),
+    env: process.env.NODE_ENV,
+    isDev: process.env.NODE_ENV === 'development',
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL
+  });
 
-    // Successful authentication, redirect to the feed page
-    return NextResponse.redirect(new URL('/feed', request.url));
+  if (code) {
+    const cookieStore = cookies();
+    const baseUrl = getSiteUrl();
+
+    logger.info('Using base URL for redirect', { 
+      baseUrl, 
+      env: process.env.NODE_ENV,
+      isDev: process.env.NODE_ENV === 'development',
+      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+      requestOrigin: requestUrl.origin
+    });
+
+    const response = NextResponse.redirect(new URL('/feed', baseUrl));
+
+    // Create Supabase client with cookie store and response
+    const supabase = await createClient(cookieStore, response);
+
+    try {
+      logger.info('Exchanging code for session...');
+      const { data: { session }, error: authError } = await supabase.auth.exchangeCodeForSession(code);
+      
+      if (authError) {
+        logger.error('Auth exchange failed', { 
+          error: authError,
+          code: authError.code,
+          message: authError.message,
+          env: process.env.NODE_ENV
+        });
+        return NextResponse.redirect(new URL('/?error=auth', baseUrl));
+      }
+
+      if (!session) {
+        logger.error('No session established', {
+          env: process.env.NODE_ENV,
+          baseUrl
+        });
+        return NextResponse.redirect(new URL('/?error=no-session', baseUrl));
+      }
+
+      logger.info('Session established', {
+        userId: session.user.id,
+        email: session.user.email,
+        env: process.env.NODE_ENV,
+        baseUrl
+      });
+
+      // Check if profile exists
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, onboarded')
+        .eq('id', session.user.id)
+        .single();
+
+      // Create profile if it doesn't exist
+      if (profileError && profileError.code === 'PGRST116') {
+        logger.info('Creating new profile', { 
+          userId: session.user.id,
+          env: process.env.NODE_ENV,
+          baseUrl
+        });
+        
+        const profileData = {
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.user_metadata.full_name || 
+                session.user.user_metadata.name || 
+                session.user.email.split('@')[0],
+          profile_image: session.user.user_metadata.avatar_url,
+          onboarded: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        const { error: createError } = await supabase
+          .from('profiles')
+          .insert([profileData]);
+
+        if (createError) {
+          logger.error('Failed to create profile', {
+            error: createError,
+            userId: session.user.id,
+            env: process.env.NODE_ENV,
+            baseUrl
+          });
+          return response;
+        }
+
+        logger.info('Profile created successfully', { 
+          userId: session.user.id,
+          env: process.env.NODE_ENV,
+          baseUrl
+        });
+        return NextResponse.redirect(new URL('/onboarding', baseUrl));
+      }
+
+      if (profileError) {
+        logger.error('Failed to check profile', {
+          error: profileError,
+          userId: session.user.id,
+          env: process.env.NODE_ENV,
+          baseUrl
+        });
+        return response;
+      }
+
+      // If user hasn't completed onboarding, redirect them
+      if (!profile.onboarded) {
+        logger.info('Redirecting to onboarding', { 
+          userId: session.user.id,
+          env: process.env.NODE_ENV,
+          baseUrl
+        });
+        return NextResponse.redirect(new URL('/onboarding', baseUrl));
+      }
+
+      return response;
+    } catch (error) {
+      logger.error('Callback processing failed', {
+        error,
+        stack: error.stack,
+        env: process.env.NODE_ENV,
+        baseUrl
+      });
+      return NextResponse.redirect(new URL('/?error=unknown', baseUrl));
+    }
   }
 
-  // If no code is present, redirect to the home page
-  return NextResponse.redirect(new URL('/', request.url));
+  logger.error('No code provided', {
+    env: process.env.NODE_ENV,
+    url: request.url,
+    headers: Object.fromEntries(request.headers)
+  });
+  const baseUrl = getSiteUrl();
+  return NextResponse.redirect(new URL('/?error=no-code', baseUrl));
 }

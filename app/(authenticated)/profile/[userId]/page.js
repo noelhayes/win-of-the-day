@@ -1,16 +1,18 @@
 'use client';
 
-import { useParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { createClient } from '../../../../utils/supabase/client';
-import FollowButton from '../../../../components/FollowButton';
-import ProfileStats from '../../../../components/ProfileStats';
-import PostGrid from '../../../../components/PostGrid';
-import ProductivityDashboard from '../../../../components/ProductivityDashboard';
-import FriendsList from '../../../../components/FriendsList';
-import GoalsList from '../../../../components/GoalsList';
-import ProfileImageUpload from '../../../../components/ProfileImageUpload';
+import { 
+  FollowButton, 
+  ProfileStats, 
+  PostGrid, 
+  ProductivityDashboard,
+  FriendsList,
+  GoalsList,
+  ProfileImageUpload
+} from '../../../../components';
 import { Edit3, MapPin, Link as LinkIcon, Plus } from 'lucide-react';
 import Link from 'next/link';
 

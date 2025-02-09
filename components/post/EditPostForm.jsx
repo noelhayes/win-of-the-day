@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
 import { Loader2 } from 'lucide-react';
 
 export default function EditPostForm({ post, onSave, onCancel }) {

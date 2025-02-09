@@ -1,12 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '../../../utils/supabase/client';
-import ProfileHeader from '../../../components/ProfileHeader';
-import GoalsList from '../../../components/GoalsList';
-import FriendsList from '../../../components/FriendsList';
-import ProductivityDashboard from '../../../components/ProductivityDashboard';
 import { useRouter } from 'next/navigation';
+import { createClient } from '../../../utils/supabase/client';
+import { ProfileHeader, GoalsList, FriendsList, ProductivityDashboard } from '../../../components';
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);

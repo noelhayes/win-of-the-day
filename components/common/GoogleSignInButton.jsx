@@ -1,19 +1,26 @@
 'use client';
 
-import { createBrowserClient } from '@supabase/ssr';
-import config from '../utils/config';
+import { createClient } from '../../utils/supabase/client';
 
 export default function GoogleSignInButton() {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
+  const supabase = createClient();
 
   const handleGoogleSignIn = async () => {
+    console.log('Starting Google sign-in flow...', {
+      env: process.env.NODE_ENV,
+      isDev: process.env.NODE_ENV === 'development'
+    });
+
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${config.baseUrl}/api/auth/callback`
+        redirectTo: process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:3000/api/auth/callback'
+          : `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/callback`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent'
+        }
       }
     });
   };

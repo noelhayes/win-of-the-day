@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '../utils/supabase/client';
-import Post from './Post';
+import { createClient } from '../../utils/supabase/client';
+import { Post, NewPostForm } from '../../components';
 import { Loader2 } from 'lucide-react';
-import NewPostForm from './NewPostForm';
 
 export default function WinFeed({ currentUser }) {
   const [posts, setPosts] = useState([]);

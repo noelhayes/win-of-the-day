@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
 import { useRouter } from 'next/navigation';
+import { ProfileCard } from '../ui';
 
 export default function FriendsList({ userId }) {
   const [friends, setFriends] = useState([]);
@@ -29,7 +30,12 @@ export default function FriendsList({ userId }) {
           id,
           follower_id,
           following_id,
-          following:profiles!follows_following_id_fkey(id, name, email, profile_image)
+          following:profiles!follows_following_id_fkey(
+            id, 
+            name, 
+            username,
+            profile_image
+          )
         `)
         .eq('follower_id', userId);
       if (error) throw error;
@@ -65,7 +71,7 @@ export default function FriendsList({ userId }) {
       setSearching(true);
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, name, email, profile_image')
+        .select('id, name, username, profile_image')
         .ilike('name', `%${query}%`)
         .neq('id', userId)
         .limit(5);
@@ -150,36 +156,21 @@ export default function FriendsList({ userId }) {
         </div>
 
         {searchResults.length > 0 && (
-          <div className="mt-2 bg-white border border-surface-200 rounded-lg shadow-lg">
+          <div className="mt-2 bg-white border border-surface-200 rounded-lg shadow-lg divide-y">
             {searchResults.map((user) => (
-              <div
+              <ProfileCard
                 key={user.id}
-                className="flex items-center justify-between p-3 hover:bg-surface-50 border-b last:border-b-0"
-              >
-                <div className="flex items-center">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-lg font-medium text-white overflow-hidden">
-                    {user.profile_image ? (
-                      <img
-                        src={user.profile_image}
-                        alt={user.name}
-                        className="h-10 w-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span>{user.name?.charAt(0) || '?'}</span>
-                    )}
-                  </div>
-                  <div className="ml-3">
-                    <p className="font-medium text-surface-900">{user.name}</p>
-                    <p className="text-sm text-surface-500">{user.email}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => followUser(user.id)}
-                  className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-                >
-                  Follow
-                </button>
-              </div>
+                profile={user}
+                size="small"
+                actionButton={
+                  <button
+                    onClick={() => followUser(user.id)}
+                    className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                  >
+                    Follow
+                  </button>
+                }
+              />
             ))}
           </div>
         )}
@@ -197,34 +188,18 @@ export default function FriendsList({ userId }) {
           </p>
         ) : (
           friends.map((friend) => (
-            <div
+            <ProfileCard
               key={friend.follow_id}
-              className="flex items-center justify-between p-4 bg-surface-50 rounded-lg hover:bg-surface-100 transition-colors duration-200"
-            >
-              <div className="flex items-center">
-                <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-xl font-medium text-white overflow-hidden">
-                  {friend.profile_image ? (
-                    <img
-                      src={friend.profile_image}
-                      alt={friend.name}
-                      className="h-12 w-12 rounded-full object-cover"
-                    />
-                  ) : (
-                    <span>{friend.name?.charAt(0) || '?'}</span>
-                  )}
-                </div>
-                <div className="ml-4">
-                  <p className="font-medium text-surface-900">{friend.name}</p>
-                  <p className="text-sm text-surface-500">{friend.email}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => viewProfile(friend.id)}
-                className="px-4 py-2 text-surface-500 hover:text-primary-500 transition-colors duration-200"
-              >
-                View Profile
-              </button>
-            </div>
+              profile={friend}
+              actionButton={
+                <button
+                  onClick={() => viewProfile(friend.id)}
+                  className="px-4 py-2 text-surface-500 hover:text-primary-500 transition-colors duration-200"
+                >
+                  View Profile
+                </button>
+              }
+            />
           ))
         )}
       </div>

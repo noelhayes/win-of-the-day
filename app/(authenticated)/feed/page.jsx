@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import WinFeed from '../../../components/WinFeed';
+import { WinFeed } from '../../../components';
 import { createClient } from '../../../utils/supabase/client';
 
 export default function FeedPage() {

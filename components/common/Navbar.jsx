@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
+import { useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import SearchBar from './SearchBar';
+import { SearchBar } from '../../components';
 
 export default function Navbar() {
   const pathname = usePathname();

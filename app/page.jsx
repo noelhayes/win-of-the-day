@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import dynamic from 'next/dynamic';
 
 // Lazy-load client components
-const SignInForm = dynamic(() => import('../components/SignInForm'), {
+const SignInForm = dynamic(() => import('../components/common/SignInForm'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-32 flex items-center justify-center">
@@ -12,7 +12,7 @@ const SignInForm = dynamic(() => import('../components/SignInForm'), {
   ),
 });
 
-const GoogleSignInButton = dynamic(() => import('../components/GoogleSignInButton'), {
+const GoogleSignInButton = dynamic(() => import('../components/common/GoogleSignInButton'), {
   ssr: false,
 });
 

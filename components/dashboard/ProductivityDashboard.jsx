@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createClient } from '../utils/supabase/client';
+import { createClient } from '../../utils/supabase/client';
 import { Trophy, Target } from 'lucide-react';
 
 export default function ProductivityDashboard({ userId }) {
