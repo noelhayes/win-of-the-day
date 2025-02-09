@@ -29,6 +29,12 @@ Win of the Day is a modern social platform that transforms how we maintain meani
 - **Date Handling**: [date-fns](https://date-fns.org/)
 - **Icons**: [Lucide React](https://lucide.dev/)
 
+## 🌐 Environments
+
+- Production: [dailywin.app](https://www.dailywin.app)
+- Preview: [preview.dailywin.app](https://preview.dailywin.app)
+- Development: `localhost:3000`
+
 ## 🚀 Local Development Setup
 
 1. Clone the repository:
@@ -59,3 +65,11 @@ Win of the Day is a modern social platform that transforms how we maintain meani
    ```bash
    npm run dev
    ```
+
+## 🔒 Authentication
+
+The app uses Supabase Auth with Google OAuth. The auth flow varies by environment:
+
+- Development: Redirects to localhost:3000
+- Preview: Uses preview.dailywin.app
+- Production: Uses www.dailywin.app
