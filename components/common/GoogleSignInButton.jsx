@@ -1,22 +1,25 @@
 'use client';
 
 import { createClient } from '../../utils/supabase/client';
+import { getSiteUrl } from '../../utils/site-url';
 
 export default function GoogleSignInButton() {
   const supabase = createClient();
 
   const handleGoogleSignIn = async () => {
+    const siteUrl = getSiteUrl();
+    
     console.log('Starting Google sign-in flow...', {
       env: process.env.NODE_ENV,
-      isDev: process.env.NODE_ENV === 'development'
+      isDev: process.env.NODE_ENV === 'development',
+      siteUrl,
+      redirectTo: `${siteUrl}/api/auth/callback`
     });
 
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: process.env.NODE_ENV === 'development' 
-          ? 'http://localhost:3000/api/auth/callback'
-          : `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/callback`,
+        redirectTo: `${siteUrl}/api/auth/callback`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent'
@@ -49,7 +52,7 @@ export default function GoogleSignInButton() {
         />
       </svg>
       <span className="text-gray-600 font-medium group-hover:text-gray-900 transition-colors duration-200">
-        Continue with Google
+        Sign in with Google
       </span>
     </button>
   );
