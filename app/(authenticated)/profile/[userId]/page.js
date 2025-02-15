@@ -168,7 +168,7 @@ export default function ProfilePage() {
 
               <div className="mt-4 space-y-2">
                 {profile.bio && (
-                  <p className="text-gray-600">{profile.bio}</p>
+                  <p className="text-gray-600 whitespace-pre-wrap">{profile.bio}</p>
                 )}
                 <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                   {profile.location && (
