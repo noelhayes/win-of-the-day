@@ -3,17 +3,12 @@ import { NextResponse } from 'next/server';
 import { ensureProfile } from '../auth-helpers';
 
 export async function updateSession(request) {
-  // Convert headers to a plain object if it's a Headers instance
-  const headerData = {};
-  if (request.headers instanceof Headers) {
-    for (const [key, value] of request.headers.entries()) {
-      headerData[key] = value;
-    }
-  }
-
+  // Ensure headers is a Headers instance
+  const headers = new Headers(request.headers);
+  
   let response = NextResponse.next({
     request: {
-      headers: headerData,
+      headers,
     },
   });
 
@@ -29,7 +24,7 @@ export async function updateSession(request) {
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({
             request: {
-              headers: headerData,
+              headers,
             },
           });
           response.cookies.set({ name, value, ...options });
@@ -38,7 +33,7 @@ export async function updateSession(request) {
           request.cookies.delete({ name, ...options });
           response = NextResponse.next({
             request: {
-              headers: headerData,
+              headers,
             },
           });
           response.cookies.delete({ name, ...options });
