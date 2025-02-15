@@ -3,9 +3,17 @@ import { NextResponse } from 'next/server';
 import { ensureProfile } from '../auth-helpers';
 
 export async function updateSession(request) {
+  // Convert headers to a plain object if it's a Headers instance
+  const headerData = {};
+  if (request.headers instanceof Headers) {
+    for (const [key, value] of request.headers.entries()) {
+      headerData[key] = value;
+    }
+  }
+
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: headerData,
     },
   });
 
@@ -21,7 +29,7 @@ export async function updateSession(request) {
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({
             request: {
-              headers: request.headers,
+              headers: headerData,
             },
           });
           response.cookies.set({ name, value, ...options });
@@ -30,7 +38,7 @@ export async function updateSession(request) {
           request.cookies.delete({ name, ...options });
           response = NextResponse.next({
             request: {
-              headers: request.headers,
+              headers: headerData,
             },
           });
           response.cookies.delete({ name, ...options });
@@ -39,53 +47,22 @@ export async function updateSession(request) {
     }
   );
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
 
-  if (userError) {
-    if (userError.name === 'AuthSessionMissingError') {
-      // This is expected during static page generation
-      console.log('No auth session (expected during static generation)');
+    if (error) {
+      // Handle session error
       return response;
     }
-    console.error('Error getting user in middleware:', userError);
+
+    if (user) {
+      // Ensure user has a profile
+      await ensureProfile(supabase, user);
+    }
+
+    return response;
+  } catch (error) {
+    console.error('Error in updateSession:', error);
     return response;
   }
-
-  if (user) {
-    console.log('Middleware: User found', {
-      id: user.id,
-      email: user.email,
-      metadata: user.user_metadata,
-      identities: user.identities
-    });
-
-    try {
-      // Check if profile exists before trying to create it
-      const { data: existingProfile, error: profileCheckError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      console.log('Middleware: Profile check result:', { existingProfile, profileCheckError });
-
-      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-        // PGRST116 means no rows returned, which is expected if profile doesn't exist
-        console.error('Middleware: Error checking profile:', profileCheckError);
-      }
-
-      if (!existingProfile) {
-        console.log('Middleware: Profile not found, creating new profile...');
-        await ensureProfile(user);
-      } else {
-        console.log('Middleware: Profile already exists');
-      }
-    } catch (error) {
-      console.error('Middleware: Error in profile creation flow:', error);
-    }
-  } else {
-    console.log('Middleware: No user found');
-  }
-
-  return response;
 }

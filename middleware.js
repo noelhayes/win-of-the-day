@@ -64,26 +64,25 @@ export async function middleware(req) {
   // Check rate limit
   const bucket = TokenBucket.buckets.get(ip) || new TokenBucket(ip);
   if (!bucket.tryConsume()) {
-    return new NextResponse(
-      JSON.stringify({ error: 'Too many requests' }),
+    const response = NextResponse.json(
+      { error: 'Too many requests' },
       {
         status: 429,
-        headers: {
-          'Content-Type': 'application/json',
-          'Retry-After': '60',
-          ...securityHeaders
-        }
+        headers: securityHeaders
       }
     );
+    return response;
   }
 
   // Update the session
   const response = await updateSession(req);
   
-  // Add security headers
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
+  // Add security headers if response exists
+  if (response && response.headers) {
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+  }
 
   return response;
 }
