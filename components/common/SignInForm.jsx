@@ -57,13 +57,21 @@ export default function SignInForm() {
           body: JSON.stringify({
             email,
             password,
-            name: name || email.split('@')[0],
+            name,
           }),
         });
 
         const data = await response.json();
-        
-        if (!response.ok) throw new Error(data.error);
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Something went wrong');
+        }
+
+        // Redirect to verification page
+        if (data.redirectTo) {
+          router.push(data.redirectTo);
+          return;
+        }
       }
 
       // Sign in the user

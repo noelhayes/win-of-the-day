@@ -113,7 +113,7 @@ export async function GET(request) {
                 session.user.user_metadata.name || 
                 session.user.email.split('@')[0],
           profile_image: session.user.user_metadata.avatar_url,
-          onboarded: false,
+          onboarded: true, // Set to true by default since we're skipping onboarding
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
@@ -137,7 +137,7 @@ export async function GET(request) {
           env: process.env.NODE_ENV,
           baseUrl
         });
-        return NextResponse.redirect(new URL('/onboarding', baseUrl));
+        return response; // Return to /feed instead of /onboarding
       }
 
       if (profileError) {
@@ -148,16 +148,6 @@ export async function GET(request) {
           baseUrl
         });
         return response;
-      }
-
-      // If user hasn't completed onboarding, redirect them
-      if (!profile.onboarded) {
-        logger.info('Redirecting to onboarding', { 
-          userId: session.user.id,
-          env: process.env.NODE_ENV,
-          baseUrl
-        });
-        return NextResponse.redirect(new URL('/onboarding', baseUrl));
       }
 
       return response;

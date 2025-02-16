@@ -21,6 +21,8 @@ export { default as GoalsList } from './profile/GoalsList';
 // UI Components
 export { default as ProfileCard } from './ui/ProfileCard';
 export { default as ComingSoonToast } from './ui/ComingSoonToast';
+export { Button } from './ui/Button';
+export { Spinner } from './ui/Spinner';
 
 // Dashboard Components
 export { default as ProductivityDashboard } from './profile/ProductivityDashboard';

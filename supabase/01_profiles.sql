@@ -32,31 +32,51 @@ language plpgsql
 security definer set search_path = public
 as $$
 declare
-    display_name text;
-    temp_username text;
+  display_name text;
+  temp_username text;
 begin
-    if new.raw_user_meta_data->>'full_name' is not null then
-        display_name := new.raw_user_meta_data->>'full_name';
-    else
-        display_name := split_part(new.email, '@', 1);
-    end if;
+  -- Use full_name from raw_user_meta_data if available, else fallback to the email prefix.
+  if new.raw_user_meta_data->>'full_name' is not null then
+    display_name := new.raw_user_meta_data->>'full_name';
+  else
+    display_name := split_part(new.email, '@', 1);
+  end if;
 
-    -- Generate initial username from email
-    temp_username := split_part(new.email, '@', 1);
+  -- Start with the email prefix and remove any character that's not a letter or number.
+  temp_username := regexp_replace(split_part(new.email, '@', 1), '[^a-zA-Z0-9]', '', 'g');
 
-    -- Ensure uniqueness by appending random string if needed
-    while exists (select 1 from profiles where username = temp_username) loop
-        temp_username := temp_username || substring(md5(random()::text) from 1 for 4);
-    end loop;
+  -- Fallback if cleaning produces an empty string.
+  if temp_username = '' then
+    temp_username := 'user';
+  end if;
 
-    insert into public.profiles (id, name, email, username)
-    values (
-        new.id,
-        display_name,
-        new.email,
-        temp_username
-    );
-    return new;
+  -- Ensure the username starts with a letter.
+  if temp_username !~ '^[A-Za-z]' then
+    temp_username := 'user' || temp_username;
+  end if;
+
+  -- Ensure a minimum length of 3 characters by padding if needed.
+  if char_length(temp_username) < 3 then
+    temp_username := temp_username || repeat('x', 3 - char_length(temp_username));
+  end if;
+
+  -- Trim to a maximum of 20 characters.
+  temp_username := left(temp_username, 20);
+
+  -- Ensure uniqueness by appending a random 4-character string if necessary,
+  -- while keeping the total length at most 20 characters.
+  while exists (select 1 from profiles where username = temp_username) loop
+    temp_username := left(temp_username, 16) || substring(md5(random()::text) from 1 for 4);
+  end loop;
+
+  insert into public.profiles (id, name, email, username)
+  values (
+    new.id,
+    display_name,
+    new.email,
+    temp_username
+  );
+  return new;
 end;
 $$;
 
