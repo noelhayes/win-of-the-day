@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../utils/supabase/server';
 import { authLogger as logger } from '../../../../utils/logger';
-import { getSiteUrl } from '../../../../utils/site-url';
+import { getSiteUrl } from '../../../../utils/config';
 
 export async function GET(request) {
   const requestUrl = new URL(request.url);

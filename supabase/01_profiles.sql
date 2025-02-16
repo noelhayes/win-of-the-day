@@ -89,3 +89,10 @@ create policy "Users can insert own profile"
 
 -- Create an index on email for faster searches
 create index if not exists profiles_email_idx on profiles (email);
+
+-- Enable the pg_trgm extension if not already enabled
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+-- Create indexes for faster text search
+CREATE INDEX IF NOT EXISTS idx_profiles_username_search ON profiles USING gin (username gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_profiles_name_search ON profiles USING gin (name gin_trgm_ops);
+

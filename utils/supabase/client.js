@@ -4,7 +4,7 @@
  */
 
 import { createBrowserClient } from '@supabase/ssr'
-import { getSiteUrl } from '../site-url';
+import { getSiteUrl } from '../config';
 
 let supabaseInstance = null;
 

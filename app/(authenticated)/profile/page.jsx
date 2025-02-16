@@ -3,13 +3,23 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../utils/supabase/client';
-import { ProfileHeader, GoalsList, FriendsList, ProductivityDashboard } from '../../../components';
+import { 
+  ProfileHeader, 
+  ProfileStats,
+  GoalsList, 
+  FriendsList, 
+  ProductivityDashboard,
+  PostGrid,
+  ComingSoonToast 
+} from '../../../components';
 
 export default function ProfilePage() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isAddingGoal, setIsAddingGoal] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
   const router = useRouter();
   const supabase = createClient();
 
@@ -25,6 +35,7 @@ export default function ProfilePage() {
 
         setUser(userData);
 
+        // Load profile data
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -33,6 +44,17 @@ export default function ProfilePage() {
 
         if (profileError) throw profileError;
         setProfile(profileData);
+
+        // Load posts
+        const { data: postsData, error: postsError } = await supabase
+          .from('posts')
+          .select('*')
+          .eq('user_id', userData.id)
+          .order('created_at', { ascending: false });
+
+        if (postsError) throw postsError;
+        setPosts(postsData || []);
+
       } catch (error) {
         console.error('Error loading profile:', error);
       } finally {
@@ -73,60 +95,47 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Left Column - Profile & Friends */}
-        <div className="xl:col-span-1">
-          <div className="space-y-6">
-            <ProfileHeader profile={profile} isOwnProfile={true} />
-            <FriendsList userId={profile.id} />
-          </div>
-        </div>
-
-        {/* Main Content Area */}
-        <div className="xl:col-span-3 space-y-6">
-          {/* Progress Dashboard */}
-          <ProductivityDashboard userId={profile.id} />
-
-          {/* Goals and Habits Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Target Wins of the Year */}
-            <div className="bg-white rounded-xl shadow-soft p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-surface-900">Target Wins of the Year</h2>
-                <button 
-                  onClick={() => setIsAddingGoal(true)}
-                  className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors duration-200"
-                >
-                  Add Goal
-                </button>
-              </div>
-              <GoalsList 
-                userId={profile.id} 
-                isOwnProfile={true} 
-                isAdding={isAddingGoal}
-                onAddingChange={setIsAddingGoal}
-              />
-            </div>
-
-            {/* Daily Habits */}
-            <div className="bg-white rounded-xl shadow-soft p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-surface-900">Daily Habits</h2>
-                <button 
-                  onClick={() => {/* Add new habit */}}
-                  className="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors duration-200"
-                >
-                  Add Habit
-                </button>
-              </div>
-              <div className="text-surface-500 text-center py-8">
-                Coming soon: Track your daily habits and build consistency!
-              </div>
-            </div>
-          </div>
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+      {/* Profile Header Section */}
+      <div className="bg-white rounded-xl shadow-soft p-6">
+        <ProfileHeader profile={profile} isOwnProfile={true} />
+        <div className="mt-6 border-t pt-6">
+          <ProfileStats userId={profile.id} />
         </div>
       </div>
+
+      {/* Three Column Layout */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Productivity Dashboard */}
+        <div className="bg-white rounded-xl shadow-soft p-6">
+          <h2 className="text-xl font-bold text-surface-900 mb-4">Productivity</h2>
+          <ProductivityDashboard userId={profile.id} />
+        </div>
+
+        {/* Goals List */}
+        <div className="bg-white rounded-xl shadow-soft p-6">
+          <h2 className="text-xl font-bold text-surface-900 mb-4">Goals</h2>
+          <GoalsList userId={profile.id} isOwnProfile={true} />
+        </div>
+
+        {/* Friends List */}
+        <div className="bg-white rounded-xl shadow-soft p-6">
+          <h2 className="text-xl font-bold text-surface-900 mb-4">Friends</h2>
+          <FriendsList userId={profile.id} />
+        </div>
+      </div>
+
+      {/* Posts Grid */}
+      <div className="bg-white rounded-xl shadow-soft p-6">
+        <h2 className="text-xl font-bold text-surface-900 mb-4">Posts</h2>
+        <PostGrid posts={posts} />
+      </div>
+
+      <ComingSoonToast
+        message={toastMessage}
+        isVisible={showToast}
+        onClose={() => setShowToast(false)}
+      />
     </div>
   );
 }

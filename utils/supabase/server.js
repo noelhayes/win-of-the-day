@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { middlewareLogger as logger } from '../logger';
-import { getSiteUrl } from '../site-url';
+import { getSiteUrl } from '../config';
 
 export async function createClient(cookieStore = null, response = null) {
   // If no cookieStore provided, use the default from next/headers

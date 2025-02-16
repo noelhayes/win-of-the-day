@@ -22,7 +22,7 @@ export { default as GoalsList } from './profile/GoalsList';
 export { default as ProfileCard } from './ui/ProfileCard';
 
 // Dashboard Components
-export { default as ProductivityDashboard } from './dashboard/ProductivityDashboard';
+export { default as ProductivityDashboard } from './profile/ProductivityDashboard';
 
 // Feed Components
 export { default as WinFeed } from './feed/WinFeed';

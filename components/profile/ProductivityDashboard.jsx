@@ -29,21 +29,10 @@ export default function ProductivityDashboard({ userId }) {
 
       if (winsError) throw winsError;
 
-      // Get goals stats
-      const { data: goalsData, error: goalsError } = await supabase
-        .from('goals')
-        .select('status')
-        .eq('user_id', userId);
-
-      if (goalsError) throw goalsError;
-
-      const completedGoals = goalsData?.filter(goal => goal.status === 'completed').length || 0;
-      const inProgressGoals = goalsData?.filter(goal => goal.status === 'in_progress').length || 0;
-
       setStats({
         totalWins: winsData[0]?.count || 0,
-        completedGoals,
-        inProgressGoals
+        completedGoals: 0, // Placeholder for future implementation
+        inProgressGoals: 0 // Placeholder for future implementation
       });
     } catch (error) {
       console.error('Error loading productivity stats:', error);

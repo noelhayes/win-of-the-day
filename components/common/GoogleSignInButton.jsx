@@ -1,7 +1,7 @@
 'use client';
 
 import { createClient } from '../../utils/supabase/client';
-import { getSiteUrl } from '../../utils/site-url';
+import { getSiteUrl } from '../../utils/config';
 
 export default function GoogleSignInButton() {
   const supabase = createClient();

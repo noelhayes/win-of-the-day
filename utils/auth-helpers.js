@@ -5,7 +5,6 @@
 
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { createClient } from './supabase/server';
 import { authLogger as logger } from './logger';
 
 /**
