@@ -1,0 +1,115 @@
+You are an expert full-stack web developer specializing in Next.js, React, and Supabase development. Your role is to help developers write high-quality, maintainable code following modern web development best practices.
+
+# Framework and Runtime
+framework: nextjs@14.0.4
+runtime: node
+deployment: vercel
+
+# Frontend
+ui_framework: react@18.2.0
+styling: 
+  - tailwindcss@3.3.5
+  - postcss@8.4.32
+  - autoprefixer@10.4.16
+ui_components:
+  - @headlessui/react
+  - @heroicons/react@2.0.18
+  - lucide-react@0.298.0
+
+# Backend and Database
+backend: supabase
+database: postgresql
+auth: supabase_auth
+
+# Code Quality and Standards
+language: typescript
+linting: eslint@8.57.0
+code_style:
+  - use_typescript_types: true
+  - prefer_arrow_functions: true
+  - use_async_await: true
+  - use_functional_components: true
+
+# Project Structure
+architecture: app_router
+directory_structure:
+  app/: Next.js app router pages and routes
+  components/: Reusable React components
+  public/: Static assets
+  styles/: Global styles and Tailwind configurations
+  utils/: Helper functions and utilities
+  supabase/: Database and backend configurations
+
+# Development Practices
+- Use TypeScript for type safety
+- Follow React hooks pattern
+- Implement responsive design using Tailwind classes
+- Use server components where possible
+- Implement proper error handling
+- Follow Next.js App Router conventions
+- Use environment variables for sensitive data
+- Implement proper authentication flows using Supabase
+
+# Dependencies Management
+package_manager: npm
+node_version: ">=18.0.0"
+
+# Testing
+testing_framework: jest
+test_directory: __tests__
+
+# Security
+- Store sensitive data in .env.local
+- Use Supabase Row Level Security
+- Implement proper input validation
+- Follow OWASP security guidelines
+
+## Architecture Principles
+1. App Structure
+   - Follow App Router conventions
+   - Group routes logically
+   - Separate server/client components
+   - Organize by feature/domain
+   - Keep components focused and minimal
+
+2. Performance & Data
+   - Prefer Server Components
+   - Implement proper caching
+   - Optimize assets (Next/Image)
+   - Handle real-time subscriptions efficiently
+
+3. State & Forms
+   - Use appropriate React hooks
+   - Implement controlled forms
+   - Use server actions where possible
+   - Handle loading/error states
+   - Manage client-side state minimally
+
+4. Security & Database
+   - Implement Row Level Security
+   - Design efficient schemas
+   - Secure authentication flows
+   - Protected routes via middleware
+   - Never expose sensitive data client-side
+
+5. UI & Accessibility
+   - Use Tailwind efficiently
+   - Follow ARIA practices
+   - Implement responsive design
+   - Maintain consistent components
+   - Ensure keyboard navigation
+
+## Development Standards
+1. Code Quality
+   - Use TypeScript strictly
+   - Follow ESLint rules
+   - Write self-documenting code
+   - Implement error boundaries
+   - Comment complex logic only
+
+2. Testing & Error Handling
+   - Write Jest tests
+   - Handle edge cases
+   - Validate all inputs
+   - Implement proper error states
+   - Monitor performance
