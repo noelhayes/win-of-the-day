@@ -1,18 +1,27 @@
-// utils/config.js
 const isServer = typeof window === 'undefined';
 
 export function getSiteUrl() {
-  // Local dev
+  // Local development
   if (process.env.NODE_ENV === 'development') {
     return 'http://localhost:3000';
   }
 
-  // Use NEXT_PUBLIC_SITE_URL if available
+  // Production environment
+  if (process.env.VERCEL_ENV === 'production') {
+    return 'https://dailywin.app';
+  }
+
+  // Preview environment
+  if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+
+  // If NEXT_PUBLIC_SITE_URL is set, use it as fallback
   if (process.env.NEXT_PUBLIC_SITE_URL) {
     return process.env.NEXT_PUBLIC_SITE_URL;
   }
 
-  // If all else fails, on the client use window.location.origin
+  // Client-side fallback
   if (!isServer) {
     return window.location.origin;
   }
