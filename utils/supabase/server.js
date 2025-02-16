@@ -1,8 +1,11 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import { middlewareLogger as logger } from '../logger';
 import { getSiteUrl } from '../config';
 
+/**
+ * Creates a Supabase client for server-side usage
+ */
 export async function createClient(cookieStore = null, response = null) {
   // If no cookieStore provided, use the default from next/headers
   if (!cookieStore) {
@@ -51,12 +54,13 @@ export async function createClient(cookieStore = null, response = null) {
                 value,
                 ...cookieOptions,
               });
-            } else {
-              // Server component case
-              cookieStore.set({ name, value, ...cookieOptions });
+              return;
             }
+
+            // Otherwise use the cookieStore (server component case)
+            cookieStore.set({ name, value, ...cookieOptions });
           } catch (error) {
-            logger.error('Failed to set cookie', error, { cookieName: name });
+            logger.error('Error setting cookie:', error);
           }
         },
         remove(name, options) {
@@ -64,6 +68,7 @@ export async function createClient(cookieStore = null, response = null) {
             const cookieOptions = {
               ...options,
               path: '/',
+              secure: process.env.NODE_ENV === 'production',
             };
 
             logger.cookieOperation('remove', name, cookieOptions);
@@ -74,14 +79,14 @@ export async function createClient(cookieStore = null, response = null) {
                 name,
                 value: '',
                 ...cookieOptions,
-                expires: new Date(0),
               });
-            } else {
-              // Server component case
-              cookieStore.delete({ name, ...cookieOptions });
+              return;
             }
+
+            // Otherwise use the cookieStore (server component case)
+            cookieStore.set({ name, value: '', ...cookieOptions });
           } catch (error) {
-            logger.error('Failed to remove cookie', error, { cookieName: name });
+            logger.error('Error removing cookie:', error);
           }
         },
       },
@@ -90,10 +95,7 @@ export async function createClient(cookieStore = null, response = null) {
 }
 
 /**
- * Helper function to update a user's profile
- * @param {string} userId - The user's ID
- * @param {Object} updates - The profile updates to apply
- * @returns {Promise<{ data: Object|null, error: Error|null }>}
+ * Helper function to update a user's profile (server-side)
  */
 export async function updateProfile(userId, updates) {
   try {
@@ -115,9 +117,7 @@ export async function updateProfile(userId, updates) {
 }
 
 /**
- * Helper function to get a user's profile
- * @param {string} userId - The user's ID
- * @returns {Promise<{ data: Object|null, error: Error|null }>}
+ * Helper function to get a user's profile (server-side)
  */
 export async function getProfile(userId) {
   try {

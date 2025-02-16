@@ -1,32 +1,28 @@
 'use client';
 
-/**
- * @typedef {import('@supabase/supabase-js').User} User
- * @typedef {import('@supabase/supabase-js').Session} Session
- */
-
-import { createBrowserClient } from '@supabase/ssr'
-import { getSiteUrl } from '../config';
+import { createBrowserClient } from '@supabase/ssr';
 
 let supabaseInstance = null;
 
+const getSiteUrl = () => {
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
+  }
+
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL;
+  }
+
+  return window.location.origin;
+};
+
 /**
  * Creates a Supabase client for browser usage with session handling
- * @returns {import('@supabase/supabase-js').SupabaseClient}
  */
 export function createClient() {
   if (supabaseInstance) return supabaseInstance;
 
-  // Since this is client-side code, we can safely use window.location.origin as fallback
   const siteUrl = getSiteUrl();
-
-  console.log('Creating Supabase browser client with config:', {
-    env: process.env.NODE_ENV,
-    isDev: process.env.NODE_ENV === 'development',
-    siteUrl,
-    origin: typeof window !== 'undefined' ? window.location.origin : 'unknown',
-    redirectTo: `${siteUrl}/api/auth/callback`
-  });
 
   supabaseInstance = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -54,8 +50,7 @@ export function createClient() {
       event,
       userId: session?.user?.id,
       env: process.env.NODE_ENV,
-      siteUrl,
-      origin: window.location.origin
+      siteUrl
     });
   });
 
@@ -64,13 +59,12 @@ export function createClient() {
 
 /**
  * Gets the current session if it exists
- * @returns {Promise<Session|null>}
  */
 export async function getCurrentSession() {
   const supabase = createClient();
   const { data: { session }, error } = await supabase.auth.getSession();
   if (error) {
-    console.error('Error getting session:', error.message);
+    console.error('Error getting session:', error);
     return null;
   }
   return session;
@@ -78,9 +72,51 @@ export async function getCurrentSession() {
 
 /**
  * Gets the current user if authenticated
- * @returns {Promise<User|null>}
  */
 export async function getCurrentUser() {
   const session = await getCurrentSession();
   return session?.user ?? null;
+}
+
+/**
+ * Helper function to update a user's profile (client-side)
+ */
+export async function updateProfile(userId, updates) {
+  try {
+    const supabase = createClient();
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Helper function to get a user's profile (client-side)
+ */
+export async function getProfile(userId) {
+  try {
+    const supabase = createClient();
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error getting profile:', error);
+    return { data: null, error };
+  }
 }
