@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '../../../../utils/supabase/client';
+import { createClient, updateProfile } from '../../../../utils/supabase/server';
 import { ProfileImageUpload } from '../../../../components';
 import { CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import ConfirmModal from '../../../../components/ui/ConfirmModal';
@@ -183,37 +183,20 @@ export default function EditProfilePage() {
         }
       }
 
-      await updateProfile();
+      await updateProfile(profile.id, {
+        username: formData.username,
+        full_name: formData.name,
+        bio: formData.bio,
+      });
+
+      setShowUsernameModal(false);
+      router.push(`/profile/${profile.id}`);
     } catch (err) {
       console.error('Error updating profile:', err);
       setError(err.message);
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const updateProfile = async () => {
-    const updates = {
-      name: formData.name,
-      bio: formData.bio,
-      updated_at: new Date().toISOString()
-    };
-
-    // Only include username-related fields if it's being changed
-    if (formData.username !== profile.username) {
-      updates.username = formData.username;
-      // Let the database function handle the timestamp
-    }
-
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', profile.id);
-
-    if (updateError) throw updateError;
-
-    setShowUsernameModal(false);
-    router.push(`/profile/${profile.id}`);
   };
 
   if (isLoading) {
@@ -315,7 +298,7 @@ export default function EditProfilePage() {
       <ConfirmModal
         isOpen={showUsernameModal}
         onClose={() => setShowUsernameModal(false)}
-        onConfirm={updateProfile}
+        onConfirm={handleSubmit}
         title="Confirm Username Change"
         message="Are you sure you want to change your username? You can only change it once every 30 days. This will update how others see you across the platform."
       />

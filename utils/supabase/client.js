@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * @typedef {import('@supabase/supabase-js').User} User
  * @typedef {import('@supabase/supabase-js').Session} Session
