@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createClient } from '../../utils/supabase/client';
-import { Post, NewPostForm } from '../../components';
+import { Post } from '../../components';
 import { Loader2 } from 'lucide-react';
 
 export default function WinFeed({ currentUser }) {
@@ -14,7 +14,23 @@ export default function WinFeed({ currentUser }) {
   useEffect(() => {
     if (currentUser) {
       loadPosts();
-      // Set up real-time subscription for likes
+      // Set up real-time subscription for posts and likes
+      const postsSubscription = supabase
+        .channel('posts-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'posts',
+          },
+          (payload) => {
+            console.log('Posts change received:', payload);
+            loadPosts();
+          }
+        )
+        .subscribe();
+
       const likesSubscription = supabase
         .channel('likes-changes')
         .on(
@@ -26,13 +42,13 @@ export default function WinFeed({ currentUser }) {
           },
           (payload) => {
             console.log('Likes change received:', payload);
-            // Refresh posts when likes change
             loadPosts();
           }
         )
         .subscribe();
 
       return () => {
+        postsSubscription.unsubscribe();
         likesSubscription.unsubscribe();
       };
     }
@@ -105,48 +121,81 @@ export default function WinFeed({ currentUser }) {
     loadPosts();
   };
 
-  const handleNewPost = (newPost) => {
-    console.log('Handling new post:', newPost);
-    setPosts(currentPosts => [newPost, ...currentPosts]);
-  };
-
   if (error) {
     return (
-      <div className="p-4 bg-red-50 text-red-600 rounded-lg">
-        Error loading posts: {error}
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="p-6 bg-red-50 rounded-2xl text-red-600 text-center border border-red-100">
+          <p className="font-medium">Unable to load your feed</p>
+          <p className="text-sm mt-1 text-red-500">{error}</p>
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center p-8">
-        <Loader2 className="w-6 h-6 animate-spin text-gray-500" />
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <div className="relative">
+            <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+            <div className="absolute inset-0 animate-ping rounded-full bg-primary-100 opacity-75" style={{ animationDuration: '2s' }}></div>
+          </div>
+          <p className="text-gray-500 mt-4 font-medium">Loading your feed...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <NewPostForm currentUser={currentUser} onNewPost={handleNewPost} />
-      
-      {posts.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No posts yet. Follow some users or create your first post!</p>
+    <div className="max-w-2xl mx-auto">
+      <div className="px-4 sm:px-0">
+        {/* Feed Header */}
+        <div className="flex items-center justify-between my-4">
+          <h1 className="text-xl font-semibold text-gray-900">
+            Your Feed
+          </h1>
+          <div className="flex items-center space-x-2">
+            {/* Add any feed controls here if needed */}
+          </div>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {posts.map((post) => (
-            <Post
-              key={post.id}
-              post={post}
-              profile={post.profiles}
-              currentUser={currentUser}
-              onUpdate={handlePostUpdate}
-            />
-          ))}
-        </div>
-      )}
+
+        {/* Posts */}
+        {posts.length === 0 ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+            <div className="text-center py-16">
+              <div className="max-w-sm mx-auto px-6">
+                <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-primary-50 flex items-center justify-center">
+                  <svg className="w-8 h-8 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Share Your First Win!</h3>
+                <p className="text-gray-500 mb-6 leading-relaxed">
+                  Start by sharing your achievements or follow others to see their wins in your feed.
+                </p>
+                <button
+                  onClick={() => document.querySelector('textarea')?.focus()}
+                  className="inline-flex items-center px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-all duration-200 shadow-sm hover:shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                >
+                  Share Your Win
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {posts.map((post) => (
+              <Post
+                key={post.id}
+                post={post}
+                profile={post.profiles}
+                currentUser={currentUser}
+                onUpdate={handlePostUpdate}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
