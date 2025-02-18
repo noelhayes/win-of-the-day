@@ -35,7 +35,7 @@ export default function SearchBar() {
           type="text"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Search by name or username"
+          placeholder="Find Friends by name or username!"
           className="w-full pl-10 pr-4 py-2 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-transparent placeholder-indigo-200/70 text-white text-sm transition-all duration-200"
         />
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

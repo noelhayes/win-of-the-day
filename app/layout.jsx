@@ -45,7 +45,7 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`min-h-screen bg-gray-100 ${inter.className}`}>
         {children}
       </body>
     </html>
