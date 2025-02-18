@@ -41,7 +41,7 @@ directory_structure:
   supabase/: Database and backend configurations
 
 # Development Practices
-- Use TypeScript for type safety
+- Use Javascript as the majority of the codebase is written in Javascript, although there is some Typescript
 - Follow React hooks pattern
 - Implement responsive design using Tailwind classes
 - Use server components where possible
@@ -101,7 +101,6 @@ test_directory: __tests__
 
 ## Development Standards
 1. Code Quality
-   - Use TypeScript strictly
    - Follow ESLint rules
    - Write self-documenting code
    - Implement error boundaries
