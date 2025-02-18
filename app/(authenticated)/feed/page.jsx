@@ -126,13 +126,13 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* New Post Form - Sticky at top */}
+      {/* New Post Form */}
       <NewPostForm 
         currentUser={user} 
         onPostCreated={handleNewPost}
       />
 
-      {/* Feed - Will only refresh when shouldRefreshFeed changes */}
+      {/* Feed */}
       <div className="py-4">
         <WinFeed 
           key={shouldRefreshFeed} 

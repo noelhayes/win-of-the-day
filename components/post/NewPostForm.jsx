@@ -134,7 +134,7 @@ export default function NewPostForm({ onPostCreated, onUpdate }) {
   };
 
   return (
-    <div className="sticky top-0 z-10 bg-gray-100 pt-4 pb-3">
+    <div className="bg-gray-100 pt-4 pb-3">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-xl shadow-sm">
           <form onSubmit={handleSubmit} className="p-4">
