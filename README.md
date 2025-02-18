@@ -62,6 +62,7 @@ Win of the Day is a modern social platform that transforms how we maintain meani
    ```
 
 4. Start the development server:
+
    ```bash
    npm run dev
    ```
