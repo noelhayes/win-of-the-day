@@ -7,8 +7,11 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { Pencil, Heart } from 'lucide-react';
-import { EditPostForm } from '../../components';
-import { ComingSoonToast, Modal } from '../ui';
+import EditPostForm from './EditPostForm';
+import ComingSoonToast from '../ui/ComingSoonToast';
+import Modal from '../ui/Modal';
+import PostMenu from '../ui/PostMenu';
+import DeletePostDialog from '../ui/DeletePostDialog';
 
 export default function Post({ post, profile, currentUser, onUpdate }) {
   const [isLiked, setIsLiked] = useState(false);
@@ -20,6 +23,8 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
   const [likesList, setLikesList] = useState([]);
   const [isLoadingLikes, setIsLoadingLikes] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -125,6 +130,30 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
     if (onUpdate) onUpdate();
   };
 
+  const handleDelete = async () => {
+    if (!currentUser?.id || !post.id) return;
+    
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/posts/${post.id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete post');
+      }
+      
+      setShowDeleteDialog(false);
+      if (onUpdate) onUpdate();
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      setToastMessage('Failed to delete post. Please try again.');
+      setShowToast(true);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // If profile is not provided, use the user_id from the post
   const userId = profile?.id || post.user_id;
   const userName = profile?.name || 'Anonymous';
@@ -197,12 +226,15 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
             )}
           </div>
           {isOwner && (
-            <button
-              onClick={() => setShowEditModal(true)}
-              className="p-1 rounded-lg transition-colors duration-200 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
+            <>
+              <button
+                onClick={() => setShowEditModal(true)}
+                className="p-1 rounded-lg transition-colors duration-200 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+              <PostMenu onDelete={() => setShowDeleteDialog(true)} />
+            </>
           )}
           {category && (
             <div
@@ -318,6 +350,13 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
           onCancel={() => setShowEditModal(false)}
         />
       </Modal>
+
+      <DeletePostDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
+        isLoading={isDeleting}
+      />
 
       <ComingSoonToast
         isVisible={showToast}
