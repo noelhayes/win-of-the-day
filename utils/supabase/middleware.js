@@ -2,19 +2,15 @@ import { NextResponse } from 'next/server';
 import { createClient } from './server';
 import { middlewareLogger as logger } from '../logger';
 
+// Cache session refresh timestamps to prevent too frequent refreshes
+const SESSION_REFRESH_CACHE = new Map();
+const SESSION_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+
 export async function updateSession(request) {
   const requestUrl = new URL(request.url);
   const baseUrl = process.env.NODE_ENV === 'development'
     ? 'http://localhost:3000'
     : process.env.NEXT_PUBLIC_SITE_URL;
-
-  logger.info('Processing request', { 
-    url: request.url,
-    pathname: requestUrl.pathname,
-    method: request.method,
-    baseUrl,
-    env: process.env.NODE_ENV
-  });
 
   try {
     // Create an unmodified response
@@ -24,15 +20,35 @@ export async function updateSession(request) {
       },
     });
 
-    // Create Supabase client with request cookies and response
+    // Create Supabase client
     const supabase = await createClient(request.cookies, response);
 
-    // Refresh the session
-    const { data: { session }, error } = await supabase.auth.getSession();
+    // Check if we need to refresh the session
+    const sessionKey = request.cookies.get('sb-ymwdctbvtmejqmialxrg-auth-token')?.value;
+    const lastRefresh = SESSION_REFRESH_CACHE.get(sessionKey);
+    const now = Date.now();
 
-    if (error) {
-      logger.error('Session refresh failed', error);
-      return NextResponse.redirect(new URL('/?error=auth', baseUrl));
+    let session = null;
+    
+    if (!lastRefresh || (now - lastRefresh) > SESSION_REFRESH_INTERVAL) {
+      // Only refresh if enough time has passed
+      const { data: { session: newSession }, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        logger.error('Session refresh failed', error);
+        // Only redirect on auth routes if there's an error
+        if (requestUrl.pathname.startsWith('/(authenticated)') || 
+            requestUrl.pathname.startsWith('/api/protected')) {
+          return NextResponse.redirect(new URL('/', baseUrl));
+        }
+        // For other routes, just continue without a session
+        return response;
+      }
+      
+      session = newSession;
+      if (sessionKey) {
+        SESSION_REFRESH_CACHE.set(sessionKey, now);
+      }
     }
 
     // Handle protected routes
@@ -50,6 +66,6 @@ export async function updateSession(request) {
     return response;
   } catch (e) {
     logger.error('Middleware error', e);
-    return NextResponse.redirect(new URL('/?error=unknown', baseUrl));
+    return NextResponse.next();
   }
 }

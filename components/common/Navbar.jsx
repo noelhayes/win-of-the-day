@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { SearchBar } from '../../components';
+import NotificationBell from '../notifications/NotificationBell';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -59,6 +60,7 @@ export default function Navbar() {
 
           {/* Right section */}
           <div className="flex items-center space-x-1">
+            <NotificationBell />
             <Link
               href="/feed"
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${

@@ -65,7 +65,7 @@ export default function ProfilePage() {
           const { data: currentProfile, error: profileError } = await supabase
             .from('profiles')
             .select('id')
-            .eq('auth_user_id', userData.data.user.id)
+            .eq('user_id', userData.data.user.id)
             .single();
 
           if (!profileError && currentProfile) {
