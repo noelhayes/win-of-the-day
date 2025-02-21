@@ -2,9 +2,9 @@ import { Navbar } from '../../components';
 
 export default function AuthenticatedLayout({ children }) {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-gray-100">
       <Navbar />
-      <main className="flex-1">
+      <main className="pt-16">
         {children}
       </main>
     </div>
