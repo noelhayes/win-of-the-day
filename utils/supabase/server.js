@@ -11,7 +11,7 @@ export async function createClient(cookieStore = null, response = null) {
   const siteUrl = config.baseUrl;
 
   logger.info('Creating Supabase server client', {
-    env: process.env.NODE_ENV,
+    env: process.env.VERCEL_ENV,
     siteUrl,
     vercelUrl: process.env.VERCEL_URL,
   });
