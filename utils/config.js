@@ -12,8 +12,8 @@ export function getSiteUrl() {
   }
 
   // Preview environment
-  if (process.env.VERCEL_ENV === 'preview' && process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
+  if (process.env.VERCEL_ENV === 'preview') {
+    return 'https://preview.dailywin.app';
   }
 
   // If NEXT_PUBLIC_SITE_URL is set, use it as fallback
