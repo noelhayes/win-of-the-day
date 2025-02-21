@@ -1,23 +1,19 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-import { middlewareLogger as logger } from '../logger';
-import { getSiteUrl } from '../config';
+import { authLogger as logger } from '../logger';
+import config from '../config';
 
-/**
- * Creates a Supabase client for server-side usage
- */
 export async function createClient(cookieStore = null, response = null) {
-  // If no cookieStore provided, use the default from next/headers
   if (!cookieStore) {
     cookieStore = cookies();
   }
 
-  const siteUrl = getSiteUrl();
+  const siteUrl = config.baseUrl;
 
   logger.info('Creating Supabase server client', {
     env: process.env.NODE_ENV,
     siteUrl,
-    vercelUrl: process.env.VERCEL_URL
+    vercelUrl: process.env.VERCEL_URL,
   });
 
   return createServerClient(
@@ -27,80 +23,35 @@ export async function createClient(cookieStore = null, response = null) {
       auth: {
         flowType: 'pkce',
         autoRefreshToken: true,
-        detectSessionInUrl: false, // We handle this manually in the callback
+        detectSessionInUrl: false,
         persistSession: true,
         site_url: siteUrl,
-        pkce: {
-          codeChallengeMethod: 'S256'
-        }
+        pkce: { codeChallengeMethod: 'S256' },
       },
       cookies: {
         get(name) {
-          const cookie = cookieStore.get(name)?.value;
-          logger.cookieOperation('get', name, { value: cookie ? 'present' : 'missing' });
-          return cookie;
+          return cookieStore.get(name)?.value;
         },
         set(name, value, options) {
-          try {
-            const cookieOptions = {
-              ...options,
-              path: '/',
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax'
-            };
-
-            logger.cookieOperation('set', name, cookieOptions);
-
-            // If response is provided (middleware case), use response.cookies
-            if (response) {
-              response.cookies.set(name, value, cookieOptions);
-            } else {
-              // Otherwise use the cookieStore
-              cookieStore.set(name, value, cookieOptions);
-            }
-          } catch (error) {
-            logger.error('Error setting cookie', { name, error });
-          }
+          cookieStore.set({ name, value, ...options });
         },
         remove(name, options) {
-          try {
-            const cookieOptions = {
-              ...options,
-              path: '/',
-              secure: process.env.NODE_ENV === 'production',
-              maxAge: -1
-            };
-
-            logger.cookieOperation('remove', name, cookieOptions);
-
-            if (response) {
-              response.cookies.set(name, '', cookieOptions);
-            } else {
-              cookieStore.set(name, '', cookieOptions);
-            }
-          } catch (error) {
-            logger.error('Error removing cookie', { name, error });
-          }
-        }
-      }
+          cookieStore.delete({ name, ...options });
+        },
+      },
     }
   );
 }
 
-/**
- * Helper function to update a user's profile (server-side)
- */
 export async function updateProfile(userId, updates) {
   try {
     const supabase = await createClient();
-    
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('id', userId)
       .select()
       .single();
-
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
@@ -109,19 +60,14 @@ export async function updateProfile(userId, updates) {
   }
 }
 
-/**
- * Helper function to get a user's profile (server-side)
- */
 export async function getProfile(userId) {
   try {
     const supabase = await createClient();
-    
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-
     if (error) throw error;
     return { data, error: null };
   } catch (error) {

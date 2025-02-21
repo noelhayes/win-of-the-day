@@ -2,66 +2,71 @@ import { NextResponse } from 'next/server';
 import { createClient } from './server';
 import { middlewareLogger as logger } from '../logger';
 
-// Cache session refresh timestamps to prevent too frequent refreshes
 const SESSION_REFRESH_CACHE = new Map();
 const SESSION_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
 export async function updateSession(request) {
   const requestUrl = new URL(request.url);
-  const baseUrl = process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3000'
-    : process.env.NEXT_PUBLIC_SITE_URL;
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.NODE_ENV === 'development'
+      ? 'http://localhost:3000'
+      : 'https://dailywin.app');
 
   try {
-    // Create an unmodified response
-    let response = NextResponse.next({
-      request: {
-        headers: request.headers,
-      },
-    });
-
-    // Create Supabase client
+    let response = NextResponse.next({ request: { headers: request.headers } });
     const supabase = await createClient(request.cookies, response);
 
-    // Check if we need to refresh the session
-    const sessionKey = request.cookies.get('sb-ymwdctbvtmejqmialxrg-auth-token')?.value;
-    const lastRefresh = SESSION_REFRESH_CACHE.get(sessionKey);
+    const sessionCookie = request.cookies.get(
+      'sb-ymwdctbvtmejqmialxrg-auth-token'
+    )?.value;
+    const lastRefresh = SESSION_REFRESH_CACHE.get(sessionCookie);
     const now = Date.now();
 
     let session = null;
-    
-    if (!lastRefresh || (now - lastRefresh) > SESSION_REFRESH_INTERVAL) {
-      // Only refresh if enough time has passed
-      const { data: { session: newSession }, error } = await supabase.auth.getSession();
-      
+    if (!lastRefresh || now - lastRefresh > SESSION_REFRESH_INTERVAL) {
+      const { data: { session: newSession }, error } =
+        await supabase.auth.getSession();
       if (error) {
         logger.error('Session refresh failed', error);
-        // Only redirect on auth routes if there's an error
-        if (requestUrl.pathname.startsWith('/(authenticated)') || 
-            requestUrl.pathname.startsWith('/api/protected')) {
+        if (
+          requestUrl.pathname.startsWith('/(authenticated)') ||
+          requestUrl.pathname.startsWith('/api/protected')
+        ) {
           return NextResponse.redirect(new URL('/', baseUrl));
         }
-        // For other routes, just continue without a session
         return response;
       }
-      
       session = newSession;
-      if (sessionKey) {
-        SESSION_REFRESH_CACHE.set(sessionKey, now);
+      if (sessionCookie) {
+        SESSION_REFRESH_CACHE.set(sessionCookie, now);
       }
     }
 
-    // Handle protected routes
-    const isAuthRoute = requestUrl.pathname.startsWith('/(authenticated)') || 
-                       requestUrl.pathname.startsWith('/api/protected');
-    const isAuthCallback = requestUrl.pathname === '/api/auth/callback';
-
+    const isAuthRoute =
+      requestUrl.pathname.startsWith('/(authenticated)') ||
+      requestUrl.pathname.startsWith('/api/protected');
     if (isAuthRoute && !session) {
       logger.info('Redirecting unauthenticated user from protected route', {
-        pathname: requestUrl.pathname
+        pathname: requestUrl.pathname,
       });
       return NextResponse.redirect(new URL('/', baseUrl));
     }
+
+    // Add security headers to response
+    const securityHeaders = {
+      'X-DNS-Prefetch-Control': 'on',
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+      'X-Frame-Options': 'SAMEORIGIN',
+      'X-Content-Type-Options': 'nosniff',
+      'Referrer-Policy': 'strict-origin-when-cross-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+      'X-XSS-Protection': '1; mode=block',
+    };
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    response.headers.set('x-pathname', requestUrl.pathname);
 
     return response;
   } catch (e) {
