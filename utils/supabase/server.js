@@ -27,9 +27,12 @@ export async function createClient(cookieStore = null, response = null) {
       auth: {
         flowType: 'pkce',
         autoRefreshToken: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: false, // We handle this manually in the callback
         persistSession: true,
-        site_url: siteUrl
+        site_url: siteUrl,
+        pkce: {
+          codeChallengeMethod: 'S256'
+        }
       },
       cookies: {
         get(name) {
@@ -43,24 +46,20 @@ export async function createClient(cookieStore = null, response = null) {
               ...options,
               path: '/',
               secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax'
             };
 
             logger.cookieOperation('set', name, cookieOptions);
 
             // If response is provided (middleware case), use response.cookies
             if (response) {
-              response.cookies.set({
-                name,
-                value,
-                ...cookieOptions,
-              });
-              return;
+              response.cookies.set(name, value, cookieOptions);
+            } else {
+              // Otherwise use the cookieStore
+              cookieStore.set(name, value, cookieOptions);
             }
-
-            // Otherwise use the cookieStore (server component case)
-            cookieStore.set({ name, value, ...cookieOptions });
           } catch (error) {
-            logger.error('Error setting cookie:', error);
+            logger.error('Error setting cookie', { name, error });
           }
         },
         remove(name, options) {
@@ -69,27 +68,21 @@ export async function createClient(cookieStore = null, response = null) {
               ...options,
               path: '/',
               secure: process.env.NODE_ENV === 'production',
+              maxAge: -1
             };
 
             logger.cookieOperation('remove', name, cookieOptions);
 
-            // If response is provided (middleware case), use response.cookies
             if (response) {
-              response.cookies.set({
-                name,
-                value: '',
-                ...cookieOptions,
-              });
-              return;
+              response.cookies.set(name, '', cookieOptions);
+            } else {
+              cookieStore.set(name, '', cookieOptions);
             }
-
-            // Otherwise use the cookieStore (server component case)
-            cookieStore.set({ name, value: '', ...cookieOptions });
           } catch (error) {
-            logger.error('Error removing cookie:', error);
+            logger.error('Error removing cookie', { name, error });
           }
-        },
-      },
+        }
+      }
     }
   );
 }
