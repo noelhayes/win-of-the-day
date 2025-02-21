@@ -38,8 +38,10 @@ export default function ProfileHeader({ profile, isOwnProfile }) {
         )}
 
         <div className="flex-1 text-center sm:text-left">
-          <h1 className="text-2xl font-bold text-surface-900">{profile.name}</h1>
-          <p className="text-surface-500 mt-1">@{profile.username}</p>
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl font-bold text-surface-900">{profile.name}</h1>
+            <p className="text-surface-500">@{profile.username}</p>
+          </div>
           
           {isOwnProfile ? (
             <button className="mt-4 px-4 py-2 bg-surface-100 hover:bg-surface-200 text-surface-600 rounded-lg text-sm font-medium transition-colors duration-200">

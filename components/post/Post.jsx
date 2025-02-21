@@ -205,7 +205,10 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
         {/* Post menu */}
         {currentUser?.id === userId && (
           <div className="relative">
-            <PostMenu onDelete={() => setShowDeleteDialog(true)} />
+            <PostMenu 
+              onEdit={() => setShowEditModal(true)}
+              onDelete={() => setShowDeleteDialog(true)} 
+            />
           </div>
         )}
       </div>
@@ -269,6 +272,19 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
         onConfirm={handleDelete}
         isLoading={isDeleting}
       />
+
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Post"
+      >
+        <EditPostForm
+          post={post}
+          onSave={handleEditSave}
+          onCancel={() => setShowEditModal(false)}
+        />
+      </Modal>
     </div>
   );
 }

@@ -147,9 +147,9 @@ export default function ProfilePage() {
               <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-between">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">
-                    {profile.username || profile.email?.split('@')[0]}
+                    {profile.name || profile.username}
                   </h1>
-                  <p className="text-gray-500">{profile.email}</p>
+                  <p className="text-gray-500">@{profile.username}</p>
                 </div>
                 <div className="flex space-x-3 mb-4 md:mb-0">
                   {isOwnProfile ? (
