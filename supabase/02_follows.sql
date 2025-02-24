@@ -18,10 +18,26 @@ alter table public.follows enable row level security;
 create policy "Users can see all follows"
     on follows for select
     using (true);
-
+    
+-- Create a new policy that allows:
+-- - The authenticated user is the follower (normal case), OR
+-- - The authenticated user is the following user AND there exists a pending follow request 
+--   from the follower to the following.
 create policy "Users can follow others"
-    on follows for insert
-    with check (auth.uid() = follower_id);
+  on follows
+  for insert
+  with check (
+    auth.uid() = follower_id OR
+    (
+      auth.uid() = following_id AND 
+      exists (
+        select 1 from follow_requests
+        where follow_requests.from_user = follower_id
+          and follow_requests.to_user = following_id
+          and follow_requests.status = 'pending'
+      )
+    )
+  );
 
 create policy "Users can unfollow"
     on follows for delete

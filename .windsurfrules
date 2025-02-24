@@ -77,6 +77,7 @@ test_directory: __tests__
    - Implement proper caching
    - Optimize assets (Next/Image)
    - Handle real-time subscriptions efficiently
+   - Do not create your own supabase client in each component but rather make sure you import '../../utils/supabase/*';
 
 3. State & Forms
    - Use appropriate React hooks

@@ -65,7 +65,7 @@ export default function ProfilePage() {
           const { data: currentProfile, error: profileError } = await supabase
             .from('profiles')
             .select('id')
-            .eq('auth_user_id', userData.data.user.id)
+            .eq('user_id', userData.data.user.id)
             .single();
 
           if (!profileError && currentProfile) {
@@ -111,7 +111,7 @@ export default function ProfilePage() {
   const isOwnProfile = currentUser?.id === userId;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow">
           {/* Profile Header */}
@@ -147,9 +147,9 @@ export default function ProfilePage() {
               <div className="flex flex-col-reverse md:flex-row md:items-center md:justify-between">
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900">
-                    {profile.username || profile.email?.split('@')[0]}
+                    {profile.name || profile.username}
                   </h1>
-                  <p className="text-gray-500">{profile.email}</p>
+                  <p className="text-gray-500">@{profile.username}</p>
                 </div>
                 <div className="flex space-x-3 mb-4 md:mb-0">
                   {isOwnProfile ? (

@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
-import { updateSession } from './utils/supabase/middleware';
 
 // Security headers to add to all responses
 const securityHeaders = {
@@ -77,8 +76,40 @@ export async function middleware(req) {
     );
   }
 
-  // Update the session
-  const response = await updateSession(req);
+  // Create an empty response to start
+  const response = NextResponse.next();
+
+  // Create Supabase client with response for cookie management
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get: (name) => req.cookies.get(name)?.value,
+        set: (name, value, options) => {
+          response.cookies.set({
+            name,
+            value,
+            ...options,
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+          });
+        },
+        remove: (name, options) => {
+          response.cookies.set({
+            name,
+            value: '',
+            ...options,
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+          });
+        },
+      },
+    }
+  );
+
+  // Refresh session if needed
+  await supabase.auth.getSession();
   
   // Add security headers and pathname
   Object.entries(securityHeaders).forEach(([key, value]) => {

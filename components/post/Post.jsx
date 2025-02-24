@@ -164,193 +164,108 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
   const wasEdited = post.updated_at && post.updated_at !== post.created_at;
 
   return (
-    <>
-      <div
-        className="bg-white rounded-lg shadow-sm p-6 mb-4 relative"
-        style={{
-          border: category ? `2px solid ${category.color}` : undefined,
-          boxShadow: category
-            ? `0 4px 6px -1px ${category.color}15, 0 2px 4px -2px ${category.color}10`
-            : undefined,
-        }}
-      >
-        {/* Header: avatar, username, private tag, edit and category badge */}
-        <div className="flex items-center space-x-4">
-          <Link href={`/profile/${userId}`} className="flex-shrink-0">
-            <div className="relative h-12 w-12 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-lg font-medium text-white overflow-hidden hover:ring-2 hover:ring-offset-2 hover:ring-primary-500 transition-all duration-200">
-              {profileImage ? (
-                profileImage.startsWith('https://') ? (
-                  <Image
-                    src={profileImage}
-                    alt={userName}
-                    fill
-                    className="object-cover"
-                    sizes="48px"
-                  />
-                ) : (
-                  <img
-                    src={profileImage}
-                    alt={userName}
-                    className="h-full w-full object-cover"
-                  />
-                )
-              ) : (
-                <span>{getInitials(userName)}</span>
-              )}
-            </div>
-          </Link>
-          <div className="flex-1">
-            <Link
-              href={`/profile/${userId}`}
-              className="font-medium text-gray-900 hover:text-primary-600 truncate transition-colors duration-200"
-            >
-              {userName}
-            </Link>
-            {post.is_private && (
-              <span className="inline-flex items-center mt-1 px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                <svg
-                  className="w-3 h-3 mr-1"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+    <div className="bg-white rounded-xl shadow-sm hover:shadow transition-all duration-200 border border-gray-200">
+      {/* Header with user info and category */}
+      <div className="flex items-center justify-between p-4">
+        <div className="flex items-center space-x-3">
+          {/* Avatar */}
+          <Link href={`/profile/${userId}`} className="block">
+            <div className="relative group">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center text-lg font-medium text-primary-600 ring-2 ring-white group-hover:ring-primary-50 transition-all duration-200">
+                {userName[0]}
+              </div>
+              {category && (
+                <div 
+                  className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs shadow-sm ring-2 ring-white"
+                  style={{
+                    backgroundColor: category.color,
+                    color: 'white',
+                  }}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
-                Private
-              </span>
-            )}
-          </div>
-          {isOwner && (
-            <>
-              <button
-                onClick={() => setShowEditModal(true)}
-                className="p-1 rounded-lg transition-colors duration-200 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <PostMenu onDelete={() => setShowDeleteDialog(true)} />
-            </>
-          )}
-          {category && (
-            <div
-              className="flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-sm font-medium"
-              style={{
-                backgroundColor: `${category.color}15`,
-                color: category.color,
-              }}
-            >
-              <span className="text-base">{category.icon}</span>
-              <span>{category.name}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Post content */}
-        <p className="mt-4 text-gray-800 whitespace-pre-wrap break-words">
-          {post.content}
-        </p>
-
-        {/* Footer: actions and timestamp */}
-        <div className="mt-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            {/* Like button with custom tooltip on hover */}
-            <div
-              className="relative inline-block"
-              onMouseEnter={() => {
-                fetchLikes();
-                setShowTooltip(true);
-              }}
-              onMouseLeave={() => setShowTooltip(false)}
-            >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLike();
-                }}
-                className="flex items-center space-x-1 text-gray-500 hover:text-gray-600 hover:bg-gray-50 px-2 py-1 rounded transition-colors duration-200"
-              >
-                <Heart
-                  className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-gray-500'} ${
-                    isLoading ? 'opacity-50' : ''
-                  }`}
-                />
-                <span className="text-sm font-medium">
-                  {likesCount} {likesCount === 1 ? 'Like' : 'Likes'}
-                </span>
-              </button>
-              {showTooltip && (
-                <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-700 text-white text-xs rounded shadow-lg whitespace-nowrap z-10">
-                  {isLoadingLikes
-                    ? 'Loading...'
-                    : likesList.length > 0
-                    ? likesList.map((like) => like.profiles.name).join(', ')
-                    : 'No likes yet'}
+                  {category.icon}
                 </div>
               )}
             </div>
-
-            <button
-              onClick={() => showComingSoon('Comments')}
-              className="flex items-center space-x-1 px-2 py-1 rounded text-sm font-medium text-gray-500 hover:text-gray-600 hover:bg-gray-50 transition-colors duration-200"
-            >
-              <svg
-                className="w-5 h-5 stroke-current"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-              <span>Comment</span>
-            </button>
-
-            <button
-              onClick={() => showComingSoon('Share')}
-              className="flex items-center space-x-1 px-2 py-1 rounded text-sm font-medium text-gray-500 hover:text-gray-600 hover:bg-gray-50 transition-colors duration-200"
-            >
-              <svg
-                className="w-5 h-5 stroke-current"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                />
-              </svg>
-              <span>Share</span>
-            </button>
+          </Link>
+          
+          {/* User info and timestamp */}
+          <div className="flex flex-col">
+            <Link href={`/profile/${userId}`} className="font-semibold text-gray-900 hover:text-primary-500 transition-colors duration-200">
+              {userName}
+            </Link>
+            <span className="text-xs text-gray-500">
+              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+              {wasEdited && (
+                <span className="ml-1 text-gray-400">(edited)</span>
+              )}
+            </span>
           </div>
+        </div>
 
-          {/* Timestamp on the bottom right */}
-          <div className="text-sm text-gray-500">
-            {timeAgo}{' '}
-            {wasEdited && <span className="text-xs text-gray-400">(edited)</span>}
+        {/* Post menu */}
+        {currentUser?.id === userId && (
+          <div className="relative">
+            <PostMenu 
+              onEdit={() => setShowEditModal(true)}
+              onDelete={() => setShowDeleteDialog(true)} 
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="px-4 pb-3">
+        <p className="text-gray-800 whitespace-pre-wrap break-words leading-relaxed">
+          {post.content}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="px-4 py-3 border-t border-gray-100">
+        <div className="flex items-center space-x-4">
+          <div
+            className="relative inline-block"
+            onMouseEnter={() => {
+              fetchLikes();
+              setShowTooltip(true);
+            }}
+            onMouseLeave={() => setShowTooltip(false)}
+          >
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLike();
+              }}
+              className={`group flex items-center space-x-2 px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 ${
+                isLiked 
+                  ? 'bg-red-50 text-red-500' 
+                  : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              <Heart
+                className={`w-4 h-4 ${
+                  isLiked 
+                    ? 'fill-current' 
+                    : 'group-hover:text-red-500'
+                } ${isLoading ? 'opacity-50' : ''}`}
+              />
+              <span className={isLiked ? '' : 'group-hover:text-gray-900'}>
+                {likesCount}
+              </span>
+            </button>
+            {showTooltip && likesCount > 0 && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1.5 bg-gray-800 text-white text-xs rounded-lg whitespace-nowrap z-10 shadow-xl">
+                {isLoadingLikes
+                  ? 'Loading...'
+                  : likesList.map((like) => like.profiles.name).join(', ')}
+                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-gray-800"></div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="Edit Post">
-        <EditPostForm
-          post={post}
-          onSave={handleEditSave}
-          onCancel={() => setShowEditModal(false)}
-        />
-      </Modal>
-
+      {/* Delete Dialog */}
       <DeletePostDialog
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
@@ -358,11 +273,18 @@ export default function Post({ post, profile, currentUser, onUpdate }) {
         isLoading={isDeleting}
       />
 
-      <ComingSoonToast
-        isVisible={showToast}
-        onClose={() => setShowToast(false)}
-        message={toastMessage}
-      />
-    </>
+      {/* Edit Modal */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Post"
+      >
+        <EditPostForm
+          post={post}
+          onSave={handleEditSave}
+          onCancel={() => setShowEditModal(false)}
+        />
+      </Modal>
+    </div>
   );
 }

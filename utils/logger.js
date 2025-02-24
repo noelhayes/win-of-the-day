@@ -23,15 +23,10 @@ class Logger {
   }
 
   _sanitizeData(data) {
-    // Deep clone the data to avoid modifying the original
     const clonedData = JSON.parse(JSON.stringify(data));
-    
-    // List of sensitive fields to redact
     const sensitiveFields = ['password', 'token', 'secret', 'key'];
-    
     const redact = (obj) => {
       if (!obj || typeof obj !== 'object') return obj;
-      
       Object.keys(obj).forEach(key => {
         if (sensitiveFields.some(field => key.toLowerCase().includes(field))) {
           obj[key] = '[REDACTED]';
@@ -39,10 +34,8 @@ class Logger {
           redact(obj[key]);
         }
       });
-      
       return obj;
     };
-
     return redact(clonedData);
   }
 
@@ -61,35 +54,31 @@ class Logger {
   }
 
   error(message, error = null, additionalData = null) {
-    const errorData = error ? {
-      message: error.message,
-      name: error.name,
-      stack: error.stack,
-      ...(error.code && { code: error.code }),
-      ...additionalData
-    } : additionalData;
-
+    const errorData = error
+      ? {
+          message: error.message,
+          name: error.name,
+          stack: error.stack,
+          ...(error.code && { code: error.code }),
+          ...additionalData,
+        }
+      : additionalData;
     console.error(this._formatMessage('ERROR', message, errorData));
   }
 
-  // Special method for auth-related logging
   authEvent(event, data = null) {
     this.info(`Auth Event: ${event}`, data);
   }
 
-  // Special method for cookie-related logging
   cookieOperation(operation, cookieName, options = null) {
     this.debug(`Cookie ${operation}`, {
       cookie: cookieName,
-      ...(options && { options: this._sanitizeData(options) })
+      ...(options && { options: this._sanitizeData(options) }),
     });
   }
 }
 
-// Create loggers for different contexts
 export const createLogger = (context) => new Logger(context);
-
-// Create commonly used loggers
 export const authLogger = createLogger('auth');
 export const middlewareLogger = createLogger('middleware');
 export const apiLogger = createLogger('api');

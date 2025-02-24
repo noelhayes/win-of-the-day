@@ -2,18 +2,16 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { WinFeed } from '../../../components';
+import { WinFeed, NewPostForm } from '../../../components';
 import { createClient } from '../../../utils/supabase/client';
+import { Loader } from 'lucide-react';
 
 export default function FeedPage() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [shouldRefreshFeed, setShouldRefreshFeed] = useState(0);
   const router = useRouter();
-
-  // Memoize the Supabase client so that it isn’t recreated on every render.
-  // If realtime isn’t needed, you could disable it here (if your client helper accepts options):
-  // const supabase = createClient({ realtime: { enabled: false } });
   const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
@@ -22,7 +20,6 @@ export default function FeedPage() {
     const loadUser = async () => {
       setError(null);
       try {
-        // Retrieve the session (which includes the user)
         const {
           data: { session },
           error: sessionError
@@ -39,17 +36,14 @@ export default function FeedPage() {
           return;
         }
 
-        // Use the user object from session instead of calling getUser separately.
         const userData = session.user;
 
-        // Retrieve user profile data
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', userData.id)
           .single();
 
-        // If error is something other than "no rows", then throw.
         if (profileError && profileError.code !== 'PGRST116') {
           console.error('Profile error:', profileError);
           throw profileError;
@@ -79,7 +73,6 @@ export default function FeedPage() {
 
     loadUser();
 
-    // Set up auth state change listener
     const {
       data: { subscription }
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -99,43 +92,52 @@ export default function FeedPage() {
     };
   }, [router, supabase]);
 
+  const handleNewPost = () => {
+    // Trigger feed refresh by incrementing the key
+    setShouldRefreshFeed(prev => prev + 1);
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="relative">
+            <Loader className="w-8 h-8 animate-spin text-primary-500 mx-auto" />
+            <div className="absolute inset-0 animate-ping rounded-full bg-primary-100 opacity-75" style={{ animationDuration: '2s' }}></div>
+          </div>
+          <p className="mt-4 text-gray-600 font-medium">Loading your feed...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="p-6 bg-red-50 rounded-2xl text-red-600 border border-red-100">
+            <p className="font-medium">Unable to load your feed</p>
+            <p className="text-sm mt-1 text-red-500">{error}</p>
           </div>
         </div>
       </div>
     );
   }
 
-  if (!user) return null;
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <WinFeed currentUser={user} />
+    <div className="min-h-screen bg-gray-100">
+      {/* New Post Form */}
+      <NewPostForm 
+        currentUser={user} 
+        onPostCreated={handleNewPost}
+      />
+
+      {/* Feed */}
+      <div className="py-4">
+        <WinFeed 
+          key={shouldRefreshFeed} 
+          currentUser={user} 
+        />
       </div>
     </div>
   );
