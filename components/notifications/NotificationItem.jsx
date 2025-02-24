@@ -17,7 +17,7 @@ export default function NotificationItem({ notification, onMarkAsRead, onActionC
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/(authenticated)/follows', {
+      const response = await fetch('/api/follows', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -55,20 +55,6 @@ export default function NotificationItem({ notification, onMarkAsRead, onActionC
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
-  };
-
-  const formatTimeAgo = (timestamp) => {
-    const now = new Date();
-    const date = new Date(timestamp);
-    const seconds = Math.floor((now - date) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
   };
 
   const getNotificationContent = () => {
@@ -172,7 +158,7 @@ export default function NotificationItem({ notification, onMarkAsRead, onActionC
           )}
         </Link>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-gray-900">{getNotificationContent()}</p>
+          <div className="text-sm text-gray-900">{getNotificationContent()}</div>
           <p className="text-xs text-gray-500 mt-1">{formatDistanceToNow(new Date(notification.created_at))}</p>
         </div>
         {!notification.is_read && (

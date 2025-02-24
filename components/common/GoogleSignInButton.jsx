@@ -8,9 +8,10 @@ export default function GoogleSignInButton() {
 
   const handleGoogleSignIn = async () => {
     const siteUrl = getSiteUrl();
-    
+
     console.log('Starting Google sign-in flow...', {
-      env: process.env.NODE_ENV,
+      node_env: process.env.NODE_ENV,
+      vercel_env: process.env.VERCEL_ENV,
       isDev: process.env.NODE_ENV === 'development',
       siteUrl,
       redirectTo: `${siteUrl}/api/auth/callback`

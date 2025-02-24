@@ -157,7 +157,10 @@ export async function PATCH(request) {
       .single();
 
     if (requestError || !followRequest) {
-      console.error('Error fetching follow request:', requestError);
+      console.error('Error fetching follow request:', {
+        error: requestError,
+        notification_reference_id: requestId
+      });
       return NextResponse.json({ error: 'Follow request not found' }, { status: 404 });
     }
 
