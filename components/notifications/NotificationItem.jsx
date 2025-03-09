@@ -127,6 +127,18 @@ export default function NotificationItem({ notification, onMarkAsRead, onActionC
         </div>
       );
     }
+    if (notification.type === 'like') {
+      return (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Link href={`/profile/${notification.trigger_user_id}`} className="font-medium hover:underline">
+              {notification.trigger_user?.name || 'A user'}
+            </Link>
+            <span>liked your post</span>
+          </div>
+        </div>
+      );
+    }
     // For other types of notifications, simply display the message.
     return notification.message || 'New notification';
   };

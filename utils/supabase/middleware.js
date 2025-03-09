@@ -1,76 +1,153 @@
+import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
-import { createClient } from './server';
-import { middlewareLogger as logger } from '../logger';
 
-const SESSION_REFRESH_CACHE = new Map();
-const SESSION_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
+// Security headers to add to all responses
+const securityHeaders = {
+  'X-DNS-Prefetch-Control': 'on',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+  'X-XSS-Protection': '1; mode=block'
+};
 
-export async function updateSession(request) {
-  const requestUrl = new URL(request.url);
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3000'
-      : 'https://dailywin.app');
+// Use a token bucket algorithm for rate limiting
+class TokenBucket {
+  static buckets = new Map();
+  static cleanup() {
+    const now = Date.now();
+    for (const [key, bucket] of TokenBucket.buckets) {
+      if (now - bucket.lastRefill > 60000) { // Remove buckets older than 1 minute
+        TokenBucket.buckets.delete(key);
+      }
+    }
+  }
+
+  constructor(key, capacity = 50, refillRate = 10) { // 50 requests per minute, refill 10 every second
+    this.key = key;
+    this.capacity = capacity;
+    this.refillRate = refillRate;
+    this.tokens = capacity;
+    this.lastRefill = Date.now();
+    TokenBucket.buckets.set(key, this);
+  }
+
+  refill() {
+    const now = Date.now();
+    const timePassed = now - this.lastRefill;
+    const refillAmount = (timePassed / 1000) * this.refillRate;
+    this.tokens = Math.min(this.capacity, this.tokens + refillAmount);
+    this.lastRefill = now;
+  }
+
+  tryConsume() {
+    this.refill();
+    if (this.tokens >= 1) {
+      this.tokens -= 1;
+      return true;
+    }
+    return false;
+  }
+}
+
+// Clean up old buckets periodically
+setInterval(() => TokenBucket.cleanup(), 60000);
+
+export async function middleware(req) {
+  // Get client IP
+  const ip = req.headers.get('x-forwarded-for') || 
+             req.headers.get('x-real-ip') || 
+             'unknown';
+  
+  // Check rate limit
+  const bucket = TokenBucket.buckets.get(ip) || new TokenBucket(ip);
+  if (!bucket.tryConsume()) {
+    return new NextResponse(
+      JSON.stringify({ error: 'Too many requests' }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': '60',
+          ...securityHeaders
+        }
+      }
+    );
+  }
+
+  // Create an empty response to start
+  const response = NextResponse.next();
+
+  // Create Supabase client with response for cookie management
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get: (name) => {
+          return req.cookies.get(name)?.value;
+        },
+        set: (name, value, options) => {
+          // In middleware, we must use the response object to set cookies
+          try {
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+              path: '/',
+              secure: process.env.NODE_ENV === 'production',
+            });
+          } catch (error) {
+            console.error('Error setting cookie in middleware:', error);
+          }
+        },
+        remove: (name, options) => {
+          // In middleware, we must use the response object to remove cookies
+          try {
+            response.cookies.set({
+              name,
+              value: '',
+              ...options,
+              path: '/',
+              secure: process.env.NODE_ENV === 'production',
+              maxAge: 0,
+            });
+          } catch (error) {
+            console.error('Error removing cookie in middleware:', error);
+          }
+        },
+      },
+    }
+  );
 
   try {
-    let response = NextResponse.next({ request: { headers: request.headers } });
-    const supabase = await createClient(request.cookies, response);
-
-    const sessionCookie = request.cookies.get(
-      'sb-ymwdctbvtmejqmialxrg-auth-token'
-    )?.value;
-    const lastRefresh = SESSION_REFRESH_CACHE.get(sessionCookie);
-    const now = Date.now();
-
-    let session = null;
-    if (!lastRefresh || now - lastRefresh > SESSION_REFRESH_INTERVAL) {
-      const { data: { session: newSession }, error } =
-        await supabase.auth.getSession();
-      if (error) {
-        logger.error('Session refresh failed', error);
-        if (
-          requestUrl.pathname.startsWith('/(authenticated)') ||
-          requestUrl.pathname.startsWith('/api/protected')
-        ) {
-          return NextResponse.redirect(new URL('/', baseUrl));
-        }
-        return response;
-      }
-      session = newSession;
-      if (sessionCookie) {
-        SESSION_REFRESH_CACHE.set(sessionCookie, now);
-      }
-    }
-
-    const isAuthRoute =
-      requestUrl.pathname.startsWith('/(authenticated)') ||
-      requestUrl.pathname.startsWith('/api/protected');
-    if (isAuthRoute && !session) {
-      logger.info('Redirecting unauthenticated user from protected route', {
-        pathname: requestUrl.pathname,
-      });
-      return NextResponse.redirect(new URL('/', baseUrl));
-    }
-
-    // Add security headers to response
-    const securityHeaders = {
-      'X-DNS-Prefetch-Control': 'on',
-      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-      'X-Frame-Options': 'SAMEORIGIN',
-      'X-Content-Type-Options': 'nosniff',
-      'Referrer-Policy': 'strict-origin-when-cross-origin',
-      'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
-      'X-XSS-Protection': '1; mode=block',
-    };
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    response.headers.set('x-pathname', requestUrl.pathname);
-
-    return response;
-  } catch (e) {
-    logger.error('Middleware error', e);
-    return NextResponse.next();
+    // Refresh session if needed
+    await supabase.auth.getSession();
+  } catch (error) {
+    console.error('Error refreshing session in middleware:', error);
+    // Continue with the request even if session refresh fails
   }
+  
+  // Add security headers and pathname
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  response.headers.set('x-pathname', req.nextUrl.pathname);
+
+  return response;
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     * Feel free to modify this pattern to include more paths.
+     */
+    '/((?!_next/static|_next/image|favicon.ico|public/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

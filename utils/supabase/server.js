@@ -33,10 +33,36 @@ export async function createClient(cookieStore = null, response = null) {
           return cookieStore.get(name)?.value;
         },
         set(name, value, options) {
-          cookieStore.set({ name, value, ...options });
+          // Only set cookies if we're in a Route Handler or Server Action context
+          // This is indicated by the presence of a response object
+          if (response) {
+            // When in a Route Handler, we need to use the response object
+            response.cookies.set({ name, value, ...options });
+          } else if (cookieStore.set) {
+            // Only set cookies directly when we're in a Server Action
+            try {
+              cookieStore.set({ name, value, ...options });
+            } catch (error) {
+              logger.error('Error setting cookie', { error, name });
+              // Don't throw the error as this would break the auth flow
+              // Just log it and continue
+            }
+          } else {
+            logger.warn('Cannot set cookie - not in a Route Handler or Server Action context', { name });
+          }
         },
         remove(name, options) {
-          cookieStore.delete({ name, ...options });
+          if (response) {
+            response.cookies.delete({ name, ...options });
+          } else if (cookieStore.delete) {
+            try {
+              cookieStore.delete({ name, ...options });
+            } catch (error) {
+              logger.error('Error removing cookie', { error, name });
+            }
+          } else {
+            logger.warn('Cannot remove cookie - not in a Route Handler or Server Action context', { name });
+          }
         },
       },
     }
