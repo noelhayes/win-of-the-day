@@ -65,10 +65,24 @@ export async function middleware(req) {
   // Skip middleware for static assets and API routes that don't need auth
   const { pathname } = req.nextUrl;
   
-  // Get client IP
+  // Get client IP and user agent for debugging
   const ip = req.headers.get('x-forwarded-for') || 
              req.headers.get('x-real-ip') || 
              'unknown';
+  const userAgent = req.headers.get('user-agent') || 'unknown';
+  
+  // Log request info for debugging
+  const isIOS = /iPhone|iPad|iPod/.test(userAgent);
+  const isMobile = /Mobile|Android/.test(userAgent);
+  
+  if (isIOS || isMobile) {
+    console.log('Mobile request detected:', { 
+      isIOS,
+      isMobile,
+      path: pathname,
+      userAgent: userAgent.substring(0, 100) // Truncate for logging
+    });
+  }
   
   // Check rate limit
   const bucket = TokenBucket.buckets.get(ip) || new TokenBucket(ip);
@@ -146,6 +160,21 @@ export async function middleware(req) {
       response.headers.set(key, value);
     });
     response.headers.set('x-pathname', pathname);
+
+    // Add special header to prevent Vercel preview protection on mobile
+    // This helps with iOS redirect issues
+    response.headers.set('x-vercel-skip-preview-protection', '1');
+    
+    // Set cookies that might help with Vercel preview authentication
+    if (process.env.VERCEL_ENV === 'preview') {
+      response.cookies.set({
+        name: 'x-vercel-skip-preview-protection',
+        value: '1',
+        path: '/',
+        secure: true,
+        maxAge: 60 * 60 * 24 * 7, // 1 week
+      });
+    }
 
     return response;
   } catch (error) {
