@@ -52,9 +52,19 @@ class TokenBucket {
 }
 
 // Clean up old buckets periodically
-setInterval(() => TokenBucket.cleanup(), 60000);
+if (typeof window === 'undefined') {
+  // Only run this on the server side
+  setInterval(() => TokenBucket.cleanup(), 60000);
+}
 
+/**
+ * Next.js middleware function that runs before each request
+ * Handles authentication, rate limiting, and security headers
+ */
 export async function middleware(req) {
+  // Skip middleware for static assets and API routes that don't need auth
+  const { pathname } = req.nextUrl;
+  
   // Get client IP
   const ip = req.headers.get('x-forwarded-for') || 
              req.headers.get('x-real-ip') || 
@@ -63,6 +73,7 @@ export async function middleware(req) {
   // Check rate limit
   const bucket = TokenBucket.buckets.get(ip) || new TokenBucket(ip);
   if (!bucket.tryConsume()) {
+    console.warn(`Rate limit exceeded for IP: ${ip}, path: ${pathname}`);
     return new NextResponse(
       JSON.stringify({ error: 'Too many requests' }),
       {
@@ -79,65 +90,72 @@ export async function middleware(req) {
   // Create an empty response to start
   const response = NextResponse.next();
 
-  // Create Supabase client with response for cookie management
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    {
-      cookies: {
-        get: (name) => {
-          return req.cookies.get(name)?.value;
-        },
-        set: (name, value, options) => {
-          // In middleware, we must use the response object to set cookies
-          try {
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-              path: '/',
-              secure: process.env.NODE_ENV === 'production',
-            });
-          } catch (error) {
-            console.error('Error setting cookie in middleware:', error);
-          }
-        },
-        remove: (name, options) => {
-          // In middleware, we must use the response object to remove cookies
-          try {
-            response.cookies.set({
-              name,
-              value: '',
-              ...options,
-              path: '/',
-              secure: process.env.NODE_ENV === 'production',
-              maxAge: 0,
-            });
-          } catch (error) {
-            console.error('Error removing cookie in middleware:', error);
-          }
-        },
-      },
-    }
-  );
-
   try {
-    // Refresh session if needed
-    await supabase.auth.getSession();
-  } catch (error) {
-    console.error('Error refreshing session in middleware:', error);
-    // Continue with the request even if session refresh fails
-  }
-  
-  // Add security headers and pathname
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
-  response.headers.set('x-pathname', req.nextUrl.pathname);
+    // Create Supabase client with response for cookie management
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          get: (name) => {
+            return req.cookies.get(name)?.value;
+          },
+          set: (name, value, options) => {
+            // In middleware, we must use the response object to set cookies
+            try {
+              response.cookies.set({
+                name,
+                value,
+                ...options,
+                path: '/',
+                secure: process.env.NODE_ENV === 'production',
+              });
+            } catch (error) {
+              console.error('Error setting cookie in middleware:', error, { name });
+            }
+          },
+          remove: (name, options) => {
+            // In middleware, we must use the response object to remove cookies
+            try {
+              response.cookies.set({
+                name,
+                value: '',
+                ...options,
+                path: '/',
+                secure: process.env.NODE_ENV === 'production',
+                maxAge: 0,
+              });
+            } catch (error) {
+              console.error('Error removing cookie in middleware:', error, { name });
+            }
+          },
+        },
+      }
+    );
 
-  return response;
+    try {
+      // Refresh session if needed
+      await supabase.auth.getSession();
+    } catch (error) {
+      console.error('Error refreshing session in middleware:', error, { path: pathname });
+      // Continue with the request even if session refresh fails
+    }
+    
+    // Add security headers and pathname
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    response.headers.set('x-pathname', pathname);
+
+    return response;
+  } catch (error) {
+    console.error('Unexpected error in middleware:', error, { path: pathname });
+    // Return a basic response in case of critical errors
+    return NextResponse.next();
+  }
 }
 
+// Define which routes this middleware applies to
 export const config = {
   matcher: [
     /*
