@@ -79,7 +79,7 @@ export async function middleware(req) {
   // Create an empty response to start
   let response = NextResponse.next();
 
-  // Create Supabase client with response for cookie management
+  // Create Supabase client for session checking only
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
@@ -113,11 +113,15 @@ export async function middleware(req) {
   );
 
   try {
-    // Refresh session if needed
-    await supabase.auth.getSession();
+    // Only check session, don't refresh
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Add session status to headers for client-side use
+    response.headers.set('x-session-status', session ? 'authenticated' : 'unauthenticated');
   } catch (error) {
-    // Handle session error silently - the user might not be logged in
-    console.error('Session refresh error:', error);
+    // Log error but don't expose it
+    console.error('Session check error:', error);
+    response.headers.set('x-session-status', 'error');
   }
   
   // Add security headers and pathname

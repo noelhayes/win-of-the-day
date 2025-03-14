@@ -3,11 +3,8 @@ import { cookies } from 'next/headers';
 import { authLogger as logger } from '../logger';
 import config from '../config';
 
-export async function createClient(cookieStore = null, response = null) {
-  if (!cookieStore) {
-    cookieStore = cookies();
-  }
-
+export async function createClient() {
+  const cookieStore = cookies();
   const siteUrl = config.baseUrl;
 
   logger.info('Creating Supabase server client', {
@@ -29,14 +26,23 @@ export async function createClient(cookieStore = null, response = null) {
         pkce: { codeChallengeMethod: 'S256' },
       },
       cookies: {
-        get(name) {
-          return cookieStore.get(name)?.value;
+        getAll: () => {
+          const cookies = {};
+          for (const cookie of cookieStore.getAll()) {
+            cookies[cookie.name] = cookie.value;
+          }
+          return cookies;
         },
-        set(name, value, options) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name, options) {
-          cookieStore.delete({ name, ...options });
+        setAll: (cookiesList) => {
+          for (const { name, value, ...options } of cookiesList) {
+            cookieStore.set({
+              name,
+              value,
+              ...options,
+              path: '/',
+              secure: process.env.NODE_ENV === 'production',
+            });
+          }
         },
       },
     }
