@@ -77,7 +77,7 @@ export async function middleware(req) {
   }
 
   // Create an empty response to start
-  const response = NextResponse.next();
+  let response = NextResponse.next();
 
   // Create Supabase client with response for cookie management
   const supabase = createServerClient(
@@ -85,31 +85,40 @@ export async function middleware(req) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
-        get: (name) => req.cookies.get(name)?.value,
-        set: (name, value, options) => {
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-            path: '/',
-            secure: process.env.NODE_ENV === 'production',
-          });
+        getAll: () => {
+          const cookies = {};
+          for (const cookie of req.cookies.getAll()) {
+            cookies[cookie.name] = cookie.value;
+          }
+          return cookies;
         },
-        remove: (name, options) => {
-          response.cookies.set({
-            name,
-            value: '',
-            ...options,
-            path: '/',
-            secure: process.env.NODE_ENV === 'production',
+        setAll: (cookiesList) => {
+          response = new NextResponse(response.body, {
+            ...response,
+            headers: response.headers,
           });
+
+          for (const cookie of cookiesList) {
+            response.cookies.set({
+              ...cookie,
+              path: '/',
+              secure: process.env.NODE_ENV === 'production',
+            });
+          }
+
+          return response;
         },
       },
     }
   );
 
-  // Refresh session if needed
-  await supabase.auth.getSession();
+  try {
+    // Refresh session if needed
+    await supabase.auth.getSession();
+  } catch (error) {
+    // Handle session error silently - the user might not be logged in
+    console.error('Session refresh error:', error);
+  }
   
   // Add security headers and pathname
   Object.entries(securityHeaders).forEach(([key, value]) => {
