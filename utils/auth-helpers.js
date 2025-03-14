@@ -22,15 +22,25 @@ function getSupabaseCookieClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      auth: {
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+        persistSession: true,
+      },
       cookies: {
-        get(name) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name, value, options) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name, options) {
-          cookieStore.delete({ name, ...options });
+        getAll: () => Array.from(cookieStore.getAll()),
+        setAll: (cookiesList) => {
+          for (const { name, value, ...options } of cookiesList) {
+            cookieStore.set({
+              name,
+              value,
+              ...options,
+              path: '/',
+              secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+            });
+          }
         },
       },
     }

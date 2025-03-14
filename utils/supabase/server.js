@@ -26,13 +26,7 @@ export async function createClient() {
         pkce: { codeChallengeMethod: 'S256' },
       },
       cookies: {
-        getAll: () => {
-          const cookies = {};
-          for (const cookie of cookieStore.getAll()) {
-            cookies[cookie.name] = cookie.value;
-          }
-          return cookies;
-        },
+        getAll: () => Array.from(cookieStore.getAll()),
         setAll: (cookiesList) => {
           for (const { name, value, ...options } of cookiesList) {
             cookieStore.set({
@@ -41,6 +35,8 @@ export async function createClient() {
               ...options,
               path: '/',
               secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              httpOnly: true,
             });
           }
         },

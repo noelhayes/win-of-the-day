@@ -84,14 +84,14 @@ export async function middleware(req) {
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
+      auth: {
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+        persistSession: true,
+      },
       cookies: {
-        getAll: () => {
-          const cookies = {};
-          for (const cookie of req.cookies.getAll()) {
-            cookies[cookie.name] = cookie.value;
-          }
-          return cookies;
-        },
+        getAll: () => Array.from(req.cookies.getAll()),
         setAll: (cookiesList) => {
           response = new NextResponse(response.body, {
             ...response,
@@ -103,6 +103,8 @@ export async function middleware(req) {
               ...cookie,
               path: '/',
               secure: process.env.NODE_ENV === 'production',
+              sameSite: 'lax',
+              httpOnly: true,
             });
           }
 

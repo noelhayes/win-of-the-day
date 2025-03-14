@@ -1,20 +1,6 @@
 import { createClient } from '../utils/supabase/server';
 import { redirect } from 'next/navigation';
-import dynamic from 'next/dynamic';
-
-// Lazy-load client components
-const SignInForm = dynamic(() => import('../components/common/SignInForm'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-32 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-600"></div>
-    </div>
-  ),
-});
-
-const GoogleSignInButton = dynamic(() => import('../components/common/GoogleSignInButton'), {
-  ssr: false,
-});
+import AuthWrapper from '../components/auth/AuthWrapper';
 
 export default async function Home() {
   const supabase = await createClient();
@@ -30,24 +16,20 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* =============================================
-          Value Prop Section (Mobile-first display)
-      ============================================== */}
+      {/* Value Prop Section */}
       <div className="w-full lg:w-1/2 bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white p-12 flex flex-col justify-center relative overflow-hidden">
-        {/* Subtle grid pattern & gradient overlay */}
         <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/40 to-transparent"></div>
         
         <div className="relative max-w-xl mx-auto">
-          {/* Simplified, more scannable content */}
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-white to-indigo-200 text-transparent bg-clip-text">
             Win of the Day
           </h1>
           <p className="text-xl mb-6 text-indigo-100 leading-relaxed">
             A daily space for reflection and connection. Share your wins, get inspired, and strengthen friendships without the constant catch-up.
             <span className="block mt-6 text-lg italic text-indigo-200 border-l-4 border-indigo-400 pl-4">
-                "Friendship isn't about catching up, it's about never falling behind in the first place."
-              </span>
+              "Friendship isn't about catching up, it's about never falling behind in the first place."
+            </span>
           </p>
           
           <ul className="list-none space-y-6">
@@ -135,37 +117,8 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* =============================================
-          Sign In Section (Stacks below on mobile)
-      ============================================== */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 bg-gradient-to-br from-slate-50 to-white">
-        {/* Slightly framed container to draw attention */}
-        <div className="w-full max-w-md space-y-8 bg-white/80 p-8 rounded-xl shadow-xl border border-gray-100">
-          <div>
-            <h2 className="mt-2 text-center text-3xl font-extrabold tracking-tight text-gray-900">
-              Get Started
-            </h2>
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Share your wins and stay connected.
-            </p>
-          </div>
-
-          <div>
-            <GoogleSignInButton />
-          </div>
-
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or sign in with your email</span>
-            </div>
-          </div>
-
-          <SignInForm />
-        </div>
-      </div>
+      {/* Auth Section - Now using AuthWrapper */}
+      <AuthWrapper user={user} error={error} />
     </div>
   );
 }
