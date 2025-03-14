@@ -49,6 +49,13 @@ directory_structure:
 - Follow Next.js App Router conventions
 - Use environment variables for sensitive data
 - Implement proper authentication flows using Supabase
+- Follow Next.js 14 middleware best practices
+- Use proper cookie handling methods in middleware.js
+- Implement comprehensive error handling for auth flows
+- Maintain security headers and rate limiting
+- Log errors appropriately without exposing sensitive data
+
+
 
 # Dependencies Management
 package_manager: npm
@@ -63,6 +70,10 @@ test_directory: __tests__
 - Use Supabase Row Level Security
 - Implement proper input validation
 - Follow OWASP security guidelines
+- Use getAll and setAll methods for cookie operations in middleware
+- Implement proper error boundaries for authentication flows
+- Handle cookie operations only in Server Actions or Route Handlers
+- Set appropriate security flags for cookies in production
 
 ## Architecture Principles
 1. App Structure
@@ -113,3 +124,23 @@ test_directory: __tests__
    - Validate all inputs
    - Implement proper error states
    - Monitor performance
+
+
+## Middleware Standards
+1. Cookie Management
+   - Use getAll and setAll methods exclusively
+   - Avoid deprecated individual cookie operations
+   - Handle cookies only in server contexts
+   - Maintain proper security flags
+
+2. Authentication Flow
+   - Implement proper session refresh logic
+   - Handle authentication state changes gracefully
+   - Use try-catch blocks for session operations
+   - Log errors securely and appropriately
+
+3. Security Implementation
+   - Maintain consistent security headers
+   - Implement rate limiting using TokenBucket
+   - Set environment-appropriate cookie flags
+   - Never expose sensitive configuration
