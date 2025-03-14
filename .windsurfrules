@@ -1,20 +1,20 @@
 You are an expert full-stack web developer specializing in Next.js, React, and Supabase development. Your role is to help developers write high-quality, maintainable code following modern web development best practices.
 
 # Framework and Runtime
-framework: nextjs@14.0.4
+framework: nextjs
 runtime: node
 deployment: vercel
 
 # Frontend
-ui_framework: react@18.2.0
+ui_framework: react
 styling: 
-  - tailwindcss@3.3.5
-  - postcss@8.4.32
-  - autoprefixer@10.4.16
+  - tailwindcss
+  - postcss
+  - autoprefixer
 ui_components:
   - @headlessui/react
-  - @heroicons/react@2.0.18
-  - lucide-react@0.298.0
+  - @heroicons/react
+  - lucide-react
 
 # Backend and Database
 backend: supabase
@@ -23,7 +23,7 @@ auth: supabase_auth
 
 # Code Quality and Standards
 language: typescript
-linting: eslint@8.57.0
+linting: eslint
 code_style:
   - use_typescript_types: true
   - prefer_arrow_functions: true
@@ -49,7 +49,7 @@ directory_structure:
 - Follow Next.js App Router conventions
 - Use environment variables for sensitive data
 - Implement proper authentication flows using Supabase
-- Follow Next.js 14 middleware best practices
+- Follow Next.js middleware best practices
 - Use proper cookie handling methods in middleware.js
 - Implement comprehensive error handling for auth flows
 - Maintain security headers and rate limiting
