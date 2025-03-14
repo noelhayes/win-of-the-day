@@ -1,0 +1,8 @@
+{
+  "liveServer.settings.enabled": false,
+  "livePreview.enabled": false,
+  "files.exclude": {
+    "**/.vscode-test/**": true
+  }
+}
+I 

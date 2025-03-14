@@ -1,16 +1,60 @@
-import { createClient } from '../utils/supabase/server';
+import { createServerClient } from '@supabase/ssr';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import AuthWrapper from '../components/auth/AuthWrapper';
 
-export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+// Following our auth standards for session management
+async function getServerSideAuth() {
+  try {
+    const headersList = headers();
+    const authState = headersList.get('x-auth-state');
+    const userId = headersList.get('x-user-id');
 
-  // If the user is already logged in, send them to the feed.
-  if (user && !error) {
+    if (!authState || !userId) {
+      return { session: null, error: null };
+    }
+
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          get: () => null,
+          getAll: () => {
+            const cookies = {};
+            cookieStore.getAll().forEach((cookie) => {
+              cookies[cookie.name] = cookie.value;
+            });
+            return cookies;
+          },
+          set: () => null,
+          setAll: () => null,
+          remove: () => null,
+          removeAll: () => null
+        }
+      }
+    );
+
+    const { data: { session }, error } = await supabase.auth.getSession();
+
+    if (error) {
+      console.error('Auth error in page:', error.message);
+      return { session: null, error };
+    }
+
+    return { session, error: null };
+  } catch (error) {
+    console.error('Error in getServerSideAuth:', error.message);
+    return { session: null, error };
+  }
+}
+
+export default async function Home() {
+  const { session, error } = await getServerSideAuth();
+
+  // If the user is already logged in, send them to the feed
+  if (session?.user?.id) {
     redirect('/feed');
   }
 
@@ -117,8 +161,8 @@ export default async function Home() {
         </div>
       </div>
 
-      {/* Auth Section - Now using AuthWrapper */}
-      <AuthWrapper user={user} error={error} />
+      {/* Auth Section */}
+      <AuthWrapper session={session} error={error} />
     </div>
   );
 }

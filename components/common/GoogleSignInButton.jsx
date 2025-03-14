@@ -1,32 +1,50 @@
 'use client';
 
-import { createClient } from '../../utils/supabase/client';
-import { getSiteUrl } from '../../utils/config';
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function GoogleSignInButton() {
-  const supabase = createClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    {
+      cookies: {
+        get: () => null,
+        getAll: () => null,
+        set: () => null,
+        setAll: () => null,
+        remove: () => null,
+        removeAll: () => null
+      }
+    }
+  );
 
   const handleGoogleSignIn = async () => {
-    const siteUrl = getSiteUrl();
+    try {
+      // Log the current environment and URL for debugging
+      console.log('Starting Google sign-in:', {
+        origin: window.location.origin,
+        env: process.env.NODE_ENV,
+        redirectTo: `${window.location.origin}/auth/callback`
+      });
 
-    console.log('Starting Google sign-in flow...', {
-      node_env: process.env.NODE_ENV,
-      vercel_env: process.env.VERCEL_ENV,
-      isDev: process.env.NODE_ENV === 'development',
-      siteUrl,
-      redirectTo: `${siteUrl}/api/auth/callback`
-    });
-
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${siteUrl}/api/auth/callback`,
-        queryParams: {
-          access_type: 'offline',
-          prompt: 'consent'
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent'
+          },
+          skipBrowserRedirect: false // Force browser redirect
         }
+      });
+
+      if (error) {
+        console.error('Google auth error:', error.message);
       }
-    });
+    } catch (err) {
+      console.error('Google auth error:', err.message);
+    }
   };
 
   return (
